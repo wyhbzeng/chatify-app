@@ -22,11 +22,12 @@ export const useChatStore = create((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   setSelectedUser: (selectedUser) => {
-    // 取消旧订阅
     get().unsubscribeFromMessages();
     set({ selectedUser, messages: [] });
-    // 订阅新消息
-    get().subscribeToMessages();
+    if (selectedUser && selectedUser._id) {
+      get().getMessagesByUserId(selectedUser._id);
+      get().subscribeToMessages();
+    }
   },
 
   getAllContacts: async () => {
@@ -83,6 +84,7 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  // 🔴 核心：强制立即显示，不依赖任何条件
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
     const { authUser, socket } = useAuthStore.getState();
@@ -97,7 +99,7 @@ export const useChatStore = create((set, get) => ({
       return;
     }
 
-    // 乐观更新
+    // 1. 立即在本地显示（强制添加到 messages 数组）
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
       _id: tempId,
@@ -106,32 +108,40 @@ export const useChatStore = create((set, get) => ({
       text: messageData.text,
       image: messageData.image,
       createdAt: new Date().toISOString(),
-      isOptimistic: true,
+      isOptimistic: true, // 标记为临时消息
     };
-    set({ messages: [...messages, optimisticMessage] });
+
+    // 直接更新状态，强制渲染
+    set((state) => ({
+      messages: [...state.messages, optimisticMessage],
+    }));
 
     try {
-      // 发送到后端
+      // 2. 发送到后端
       const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-      // 替换乐观消息
-      set({
-        messages: messages.map(msg => 
+
+      // 3. 用真实消息替换临时消息（按 tempId 匹配）
+      set((state) => ({
+        messages: state.messages.map((msg) =>
           msg._id === tempId ? res.data : msg
         ),
-      });
+      }));
     } catch (error) {
-      // 回滚
-      set({ messages: messages.filter(msg => msg._id !== tempId) });
+      // 4. 出错时回滚，删除临时消息
+      set((state) => ({
+        messages: state.messages.filter((msg) => msg._id !== tempId),
+      }));
       const errorMsg = error.response?.data?.message || "Failed to send message";
       toast.error(errorMsg);
       console.log("Send message error:", error);
     }
   },
 
-  // 订阅新消息
+  // 订阅新消息：只处理对方发来的，自己的已经在本地处理了
   subscribeToMessages: () => {
     const { selectedUser, isSoundEnabled } = get();
-    if (!selectedUser || !selectedUser._id) return;
+    const { authUser } = useAuthStore.getState();
+    if (!selectedUser || !selectedUser._id || !authUser) return;
 
     const socket = useAuthStore.getState().socket;
     if (!socket) {
@@ -139,47 +149,44 @@ export const useChatStore = create((set, get) => ({
       return;
     }
 
-    // 移除旧监听
     socket.off("newMessage");
 
-    // 监听新消息
     socket.on("newMessage", (newMessage) => {
       console.log("📥 Received new message:", newMessage);
-      // 数据校验
-      if (!newMessage || !newMessage.senderId || !newMessage.receiverId) {
+      if (!newMessage || !newMessage.senderId || !newMessage.receiverId || !newMessage._id) {
         console.warn("Invalid message data:", newMessage);
         return;
       }
 
-      // 只处理和当前聊天对象相关的消息
-      if (
+      // 只处理对方发来的消息，自己发的已经在本地处理了
+      const isFromOtherUser = newMessage.senderId !== authUser._id.toString();
+      const isForCurrentChat =
         newMessage.senderId === selectedUser._id.toString() ||
-        newMessage.receiverId === selectedUser._id.toString()
-      ) {
-        const currentMessages = get().messages;
-        // 避免重复
-        const isDuplicate = currentMessages.some(msg => msg._id === newMessage._id);
-        if (!isDuplicate) {
-          set({ messages: [...currentMessages, newMessage] });
-          
-          // 播放提示音
-          if (isSoundEnabled && newMessage.senderId === selectedUser._id.toString()) {
-            try {
-              const sound = new Audio("/sounds/notification.mp3");
-              sound.currentTime = 0;
-              sound.play().catch(e => console.log("Audio play error:", e));
-            } catch (e) {
-              console.log("Notification sound error:", e);
-            }
+        newMessage.receiverId === selectedUser._id.toString();
+
+      if (isFromOtherUser && isForCurrentChat) {
+        set((state) => {
+          // 检查是否重复
+          const isDuplicate = state.messages.some((msg) => msg._id === newMessage._id);
+          if (isDuplicate) {
+            console.log("⚠️ Duplicate message filtered out:", newMessage._id);
+            return state;
           }
+          return { messages: [...state.messages, newMessage] };
+        });
+
+        // 播放提示音
+        if (isSoundEnabled && newMessage.senderId === selectedUser._id.toString()) {
+          try {
+            new Audio("/sounds/notification.mp3").play().catch(() => {});
+          } catch {}
         }
       }
     });
 
-    console.log("✅ Subscribed to new messages for user:", selectedUser._id);
+    console.log("✅ Subscribed to new messages for:", selectedUser._id);
   },
 
-  // 取消订阅
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (socket) {

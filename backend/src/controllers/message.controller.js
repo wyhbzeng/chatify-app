@@ -4,7 +4,6 @@ import minioClient from "../lib/minioClient.js";
 import { ENV } from "../lib/env.js";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
-// 导入 io 实例和获取 Socket ID 的方法
 import { io, getReceiverSocketId } from "../lib/socket.js";
 
 export const getAllContacts = async (req, res) => {
@@ -57,7 +56,6 @@ export const sendMessage = async (req, res) => {
       imageUrl = `http://${ENV.MINIO_ENDPOINT || 'localhost'}:${ENV.MINIO_PORT || '9000'}/${bucketName}/${fileName}`;
     }
 
-    // 创建并保存新消息
     const newMessage = new Message({
       senderId,
       receiverId,
@@ -66,13 +64,11 @@ export const sendMessage = async (req, res) => {
     });
     const savedMessage = await newMessage.save();
 
-    // 填充用户信息，用于前端显示
     const populatedMessage = await Message.findById(savedMessage._id)
       .populate("senderId", "fullName profilePic _id")
       .populate("receiverId", "fullName profilePic _id")
       .lean();
 
-    // 格式化消息（统一 ID 为字符串）
     const formattedMessage = {
       ...populatedMessage,
       senderId: populatedMessage.senderId._id.toString(),
@@ -80,20 +76,9 @@ export const sendMessage = async (req, res) => {
       _id: populatedMessage._id.toString(),
     };
 
-    // 关键：通过 Socket 实时推送
-    const receiverSocketId = getReceiverSocketId(receiverId.toString());
-    const senderSocketId = getReceiverSocketId(senderId.toString());
-
-    // 推送给接收方
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", formattedMessage);
-      console.log("📤 Message sent to receiver:", receiverId);
-    }
-    // 推送给发送方（确保发送方也能实时更新）
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("newMessage", formattedMessage);
-      console.log("📤 Message sent to sender:", senderId);
-    }
+    // 全局广播，确保双方都能收到
+    io.emit("newMessage", formattedMessage);
+    console.log("📤 Message broadcasted to all users:", formattedMessage._id);
 
     res.status(201).json(formattedMessage);
   } catch (error) {
