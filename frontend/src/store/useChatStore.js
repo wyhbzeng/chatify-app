@@ -84,7 +84,7 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // 🔴 核心：强制立即显示，不依赖任何条件
+  // 🔴 核心修改：支持文字+图片发送，保留立即显示逻辑
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
     const { authUser, socket } = useAuthStore.getState();
@@ -99,14 +99,22 @@ export const useChatStore = create((set, get) => ({
       return;
     }
 
-    // 1. 立即在本地显示（强制添加到 messages 数组）
+    // 1. 处理图片预览（立即显示）
+    let imagePreviewUrl = null;
+    if (messageData.imageFile) {
+      // 创建图片预览URL
+      imagePreviewUrl = URL.createObjectURL(messageData.imageFile);
+    }
+
+    // 2. 立即在本地显示（强制添加到 messages 数组）
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
       _id: tempId,
       senderId: authUser._id.toString(),
       receiverId: selectedUser._id.toString(),
-      text: messageData.text,
-      image: messageData.image,
+      text: messageData.text || "", // 兼容纯图片消息
+      image: imagePreviewUrl, // 显示预览图
+      imageFile: messageData.imageFile, // 临时存储文件
       createdAt: new Date().toISOString(),
       isOptimistic: true, // 标记为临时消息
     };
@@ -117,20 +125,49 @@ export const useChatStore = create((set, get) => ({
     }));
 
     try {
-      // 2. 发送到后端
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+      // 3. 构建FormData（支持文件上传）
+      const formData = new FormData();
+      if (messageData.text) formData.append("text", messageData.text);
+      if (messageData.imageFile) formData.append("image", messageData.imageFile);
 
-      // 3. 用真实消息替换临时消息（按 tempId 匹配）
+      // 4. 发送到后端（设置正确的请求头）
+      const res = await axiosInstance.post(
+        `/messages/send/${selectedUser._id}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data", // 关键：文件上传必须的请求头
+          },
+        }
+      );
+
+      // 5. 用真实消息替换临时消息（按 tempId 匹配）
       set((state) => ({
         messages: state.messages.map((msg) =>
-          msg._id === tempId ? res.data : msg
+          msg._id === tempId ? {
+            ...res.data,
+            _id: res.data._id.toString(),
+            senderId: res.data.senderId.toString(),
+            receiverId: res.data.receiverId.toString()
+          } : msg
         ),
       }));
+
+      // 释放预览URL，避免内存泄漏
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
     } catch (error) {
-      // 4. 出错时回滚，删除临时消息
+      // 6. 出错时回滚，删除临时消息
       set((state) => ({
         messages: state.messages.filter((msg) => msg._id !== tempId),
       }));
+      
+      // 释放预览URL
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+      
       const errorMsg = error.response?.data?.message || "Failed to send message";
       toast.error(errorMsg);
       console.log("Send message error:", error);

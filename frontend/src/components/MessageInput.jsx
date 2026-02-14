@@ -8,6 +8,7 @@ function MessageInput() {
   const { playRandomKeyStrokeSound } = useKeyboardSound();
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [selectedImageFile, setSelectedImageFile] = useState(null); // 新增：存储File对象
 
   const fileInputRef = useRef(null);
 
@@ -15,32 +16,36 @@ function MessageInput() {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!text.trim() && !imagePreview) return;
+    if (!text.trim() && !selectedImageFile) return; // 检查File对象
     if (isSoundEnabled) playRandomKeyStrokeSound();
 
     sendMessage({
       text: text.trim(),
-      image: imagePreview,
+      imageFile: selectedImageFile, // 传递File对象，而不是base64
     });
     setText("");
-    setImagePreview("");
+    setImagePreview(null);
+    setSelectedImageFile(null); // 重置File对象
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
 
+    setSelectedImageFile(file); // 存储File对象
     const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result);
+    reader.onloadend = () => setImagePreview(reader.result); // 显示预览
     reader.readAsDataURL(file);
   };
 
   const removeImage = () => {
     setImagePreview(null);
+    setSelectedImageFile(null); // 重置File对象
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -89,14 +94,14 @@ function MessageInput() {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           className={`bg-slate-800/50 text-slate-400 hover:text-slate-200 rounded-lg px-4 transition-colors ${
-            imagePreview ? "text-cyan-500" : ""
+            selectedImageFile ? "text-cyan-500" : "" // 高亮选中状态
           }`}
         >
           <ImageIcon className="w-5 h-5" />
         </button>
         <button
           type="submit"
-          disabled={!text.trim() && !imagePreview}
+          disabled={!text.trim() && !selectedImageFile} // 检查File对象
           className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg px-4 py-2 font-medium hover:from-cyan-600 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <SendIcon className="w-5 h-5" />

@@ -104,16 +104,26 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // 更新资料
-  updateProfile: async (data) => {
+  // 核心修复：更新资料（支持FormData文件上传）
+  updateProfile: async (formData) => {
     try {
-      const res = await axiosInstance.put("/auth/update-profile", data);
+      const res = await axiosInstance.put(
+        "/auth/update-profile",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data", // 文件上传必须的请求头
+          },
+        }
+      );
       set({ authUser: res.data });
       toast.success("Profile updated successfully");
+      return res.data; // 返回更新后的用户信息，供前端更新预览
     } catch (error) {
       const errorMsg = error.response?.data?.message || "Update failed!";
       toast.error(errorMsg);
       console.log("Update profile error:", error);
+      throw error; // 抛出错误让前端处理
     }
   },
 
