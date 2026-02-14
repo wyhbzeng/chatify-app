@@ -4,7 +4,7 @@ import minioClient from "../lib/minioClient.js";
 import { ENV } from "../lib/env.js";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
-import { io, getReceiverSocketId } from "../lib/socket.js";
+import { io } from "../lib/socket.js";
 
 export const getAllContacts = async (req, res) => {
   try {
@@ -49,26 +49,40 @@ export const sendMessage = async (req, res) => {
     const senderId = req.user._id;
     const bucketName = ENV.MINIO_BUCKET_NAME || "chatify-profiles";
 
-    let imageUrl;
+    let imageUrl = null;
+    // 修复图片上传逻辑：兼容文件上传
     if (req.file) {
-      const fileName = `${uuidv4()}${path.extname(req.file.originalname)}`;
-      await minioClient.putObject(bucketName, fileName, req.file.buffer);
-      imageUrl = `http://${ENV.MINIO_ENDPOINT || 'localhost'}:${ENV.MINIO_PORT || '9000'}/${bucketName}/${fileName}`;
+      try {
+        const fileName = `${uuidv4()}${path.extname(req.file.originalname)}`;
+        // 确保 bucket 存在
+        const bucketExists = await minioClient.bucketExists(bucketName);
+        if (!bucketExists) {
+          await minioClient.makeBucket(bucketName);
+        }
+        await minioClient.putObject(bucketName, fileName, req.file.buffer);
+        imageUrl = `http://${ENV.MINIO_ENDPOINT || 'localhost'}:${ENV.MINIO_PORT || '9000'}/${bucketName}/${fileName}`;
+      } catch (imgError) {
+        console.log("图片上传失败:", imgError);
+        return res.status(400).json({ error: "图片上传失败：" + imgError.message });
+      }
     }
 
+    // 创建并保存新消息
     const newMessage = new Message({
       senderId,
       receiverId,
-      text,
+      text: text || "", // 兼容纯图片消息
       image: imageUrl,
     });
     const savedMessage = await newMessage.save();
 
+    // 填充用户信息
     const populatedMessage = await Message.findById(savedMessage._id)
       .populate("senderId", "fullName profilePic _id")
       .populate("receiverId", "fullName profilePic _id")
       .lean();
 
+    // 统一格式
     const formattedMessage = {
       ...populatedMessage,
       senderId: populatedMessage.senderId._id.toString(),
@@ -76,14 +90,13 @@ export const sendMessage = async (req, res) => {
       _id: populatedMessage._id.toString(),
     };
 
-    // 全局广播，确保双方都能收到
+    // 极简推送：全局广播（最稳定）
     io.emit("newMessage", formattedMessage);
-    console.log("📤 Message broadcasted to all users:", formattedMessage._id);
 
     res.status(201).json(formattedMessage);
   } catch (error) {
     console.log("Error in sendMessage:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "发送消息失败：" + error.message });
   }
 };
 
@@ -111,6 +124,6 @@ export const getChatPartners = async (req, res) => {
     res.status(200).json(chatPartners);
   } catch (error) {
     console.log("Error in getChatPartners:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "获取聊天列表失败：" + error.message });
   }
 };

@@ -1,164 +1,155 @@
 import User from "../models/User.js";
-import bcryptjs from "bcryptjs";
-import { generateToken } from "../lib/utils.js";
-import { sendWelcomeEmail } from "../emails/emailHandlers.js";
-import { ENV } from "../lib/env.js";
-import minioClient from "../lib/minioClient.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import minioClient from "../lib/minioClient.js"; // 导入MinIO客户端
+import { ENV } from "../lib/env.js"; // 导入环境变量
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 
+// 生成JWT Token
+const generateToken = (userId) => {
+  return jwt.sign({ id: userId }, ENV.JWT_SECRET, {
+    expiresIn: "30d",
+  });
+};
+
+// 注册
 export const signup = async (req, res) => {
+  try {
     const { fullName, email, password } = req.body;
 
-    try {
-        if(!fullName || !email || !password){
-            return res.status(400).json({ message: "Please fill all fields" });
-        }
-
-        if(password.length < 6){
-            return res.status(400).json({ message: "Password must be at least 6 characters" });
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if(!emailRegex.test(email)){
-            return res.status(400).json({ message: "Invalid email" });
-        }
-
-        const user = await User.findOne({ email });
-        if (user) {
-            return res.status(400).json({ message: "Email already exists" });
-        }
-
-        const salt = await bcryptjs.genSalt(10);
-        const hashedPassword = await bcryptjs.hash(password,salt);
-
-        const newUser = new User({
-            fullName,   
-            email,
-            password: hashedPassword,
-        });
-
-        if(newUser){
-            const savedUser = await newUser.save();
-            // 生成真实 JWT Token
-            const token = generateToken(savedUser._id, res);
-            
-            // 在响应体中明确返回 Token
-            res.status(201).json({
-                _id: newUser._id,
-                fullName: newUser.fullName,
-                email: newUser.email,
-                profilePic: newUser.profilePic,
-                token: token // 关键：直接返回 Token
-            })
-
-            try {
-                // await sendWelcomeEmail(savedUser.email, savedUser.fullName, ENV.CLIENT_URL);
-            } catch (error) {
-                console.log("Error sending welcome email:", error);
-            }
-        } else {
-            return res.status(400).json({ message: "Invalid user data" });
-        }
-
-    } catch (error) {
-        console.log("Error in signup controller:",error);
-        res.status(500).json({message: "Internal server error"})
+    // 检查用户是否已存在
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already in use" });
     }
-}
 
+    // 哈希密码
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // 创建新用户
+    const newUser = new User({
+      fullName,
+      email,
+      password: hashedPassword,
+    });
+
+    await newUser.save();
+
+    // 生成Token
+    const token = generateToken(newUser._id);
+
+    // 返回用户信息（不含密码）+ Token
+    res.status(201).json({
+      _id: newUser._id,
+      fullName: newUser.fullName,
+      email: newUser.email,
+      profilePic: newUser.profilePic,
+      token,
+    });
+  } catch (error) {
+    console.log("Error in signup controller", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 登录
 export const login = async (req, res) => {
+  try {
     const { email, password } = req.body;
 
-    try {
-        if(!email || !password){
-            return res.status(400).json({ message: "Please fill all fields" });
-        }
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: "User not found" });
-        }
-
-        const isPasswordCorrect = await bcryptjs.compare(password, user.password);
-        if (!isPasswordCorrect) {
-            return res.status(400).json({ message: "Invalid password" });
-        }
-
-        // 生成真实 JWT Token
-        const token = generateToken(user._id, res);
-
-        // 在响应体中明确返回 Token
-        res.status(200).json({
-            _id: user._id,
-            fullName: user.fullName,
-            email: user.email,
-            profilePic: user.profilePic,
-            token: token // 关键：直接返回 Token
-        })
-
-    } catch (error) {
-        console.log("Error in login controller:",error);
-        res.status(500).json({message: "Internal server error"})
+    // 检查用户是否存在
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
     }
-}
 
-export const logout = (_, res) => {
-    try {
-        res.cookie("jwt", "", {
-            maxAge: 0,
-        });
-        res.status(200).json({ message: "Logged out successfully" });
-    } catch (error) {
-        console.log("Error in logout controller:",error);
-        res.status(500).json({message: "Internal server error"})
+    // 验证密码
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    if (!isPasswordCorrect) {
+      return res.status(400).json({ message: "Invalid credentials" });
     }
-}
 
+    // 生成Token
+    const token = generateToken(user._id);
+
+    // 返回用户信息（不含密码）+ Token
+    res.status(200).json({
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      profilePic: user.profilePic,
+      token,
+    });
+  } catch (error) {
+    console.log("Error in login controller", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 登出（前端清除Token即可，后端无需额外操作）
+export const logout = async (req, res) => {
+  try {
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.log("Error in logout controller", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 核心修复：更新资料（支持头像上传到MinIO）
 export const updateProfile = async (req, res) => {
-    const { fullName } = req.body;
-    const profilePicFile = req.file;
-  
-    try {
-      const user = await User.findById(req.user._id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-  
-      if (fullName) {
-        user.fullName = fullName;
-      }
-  
-      if (profilePicFile) {
-        const bucketName = ENV.MINIO_BUCKET_NAME || 'chatify-profiles';
-        const fileExt = path.extname(profilePicFile.originalname);
-        const fileName = `avatar-${user._id}-${uuidv4()}${fileExt}`;
+  try {
+    const { fullName } = req.body; // 支持同时更新用户名
+    const userId = req.user._id;
+    const bucketName = ENV.MINIO_BUCKET_NAME || "chatify-profiles";
+
+    // 准备更新数据
+    const updateData = {};
+    if (fullName) updateData.fullName = fullName;
+
+    // 处理头像上传
+    if (req.file) {
+      try {
+        // 1. 检查Bucket是否存在，不存在则创建
+        const bucketExists = await minioClient.bucketExists(bucketName);
+        if (!bucketExists) {
+          await minioClient.makeBucket(bucketName);
+        }
+
+        // 2. 生成唯一文件名
+        const fileName = `avatar-${userId}-${uuidv4()}${path.extname(req.file.originalname)}`;
         
-        await minioClient.putObject(
-          bucketName,
-          fileName,
-          profilePicFile.buffer,
-          profilePicFile.size,
-          { 'Content-Type': profilePicFile.mimetype }
-        );
-  
+        // 3. 上传到MinIO
+        await minioClient.putObject(bucketName, fileName, req.file.buffer);
+        
+        // 4. 生成可访问的URL
         const profilePicUrl = `http://${ENV.MINIO_ENDPOINT || 'localhost'}:${ENV.MINIO_PORT || '9000'}/${bucketName}/${fileName}`;
-        user.profilePic = profilePicUrl;
+        
+        // 5. 添加到更新数据
+        updateData.profilePic = profilePicUrl;
+      } catch (imgError) {
+        console.error("MinIO上传失败:", imgError);
+        return res.status(400).json({ message: "头像上传失败：" + imgError.message });
       }
-  
-      await user.save();
-  
-      res.status(200).json({
-        _id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        profilePic: user.profilePic,
-      });
-    } catch (error) {
-      console.log("Error in updateProfile controller:", error);
-      res.status(500).json({ 
-        message: "Failed to update profile",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
     }
-  };
+
+    // 更新用户信息
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true } // 返回更新后的文档
+    ).select("-password"); // 排除密码字段
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "用户不存在" });
+    }
+
+    // 返回更新后的用户信息
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.log("Error in updateProfile controller", error);
+    res.status(500).json({ message: "更新资料失败：" + error.message });
+  }
+};
