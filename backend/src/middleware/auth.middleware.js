@@ -27,13 +27,14 @@ export const protectRoute = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized - No Token Provided" });
     }
 
+    // 核心修复：解码后读取 `id` 字段（和生成Token时一致）
     const decoded = jwt.verify(token, ENV.JWT_SECRET);
-    if (!decoded || !decoded.userId) {
-      console.log("❌ Invalid token payload");
+    if (!decoded || !decoded.id) { // 把 decoded.userId → decoded.id
+      console.log("❌ Invalid token payload: missing 'id' field");
       return res.status(401).json({ message: "Unauthorized - Invalid Token" });
     }
 
-    const user = await User.findById(decoded.userId).select("-password");
+    const user = await User.findById(decoded.id).select("-password"); // 用 decoded.id 查询
     if (!user) {
       console.log("❌ User not found");
       return res.status(404).json({ message: "User not found" });

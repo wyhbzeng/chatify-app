@@ -42,13 +42,14 @@ export const socketAuthMiddleware = async (socket, next) => {
       return next(new Error("Unauthorized - Invalid Token"));
     }
 
-    if (!decoded || !decoded.userId) {
-      console.log("Socket connection rejected: Invalid token payload");
+    // 核心修复：读取 decoded.id 而非 decoded.userId
+    if (!decoded || !decoded.id) {
+      console.log("Socket connection rejected: Invalid token payload (missing 'id')");
       return next(new Error("Unauthorized - Invalid Token Payload"));
     }
 
     // 查询用户（使用 lean() 提升性能）
-    const user = await User.findById(decoded.userId).select("-password").lean();
+    const user = await User.findById(decoded.id).select("-password").lean(); // 用 decoded.id
     if (!user) {
       console.log("Socket connection rejected: User not found");
       return next(new Error("User not found"));

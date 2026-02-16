@@ -1,4 +1,3 @@
-// index.js (主入口文件)
 import express from "express";
 import cookieParser from "cookie-parser";
 import path from "path";
@@ -15,7 +14,10 @@ const PORT = ENV.PORT || 3000;
 
 // CORS 配置（简化版，确保兼容 Socket.IO）
 const corsOptions = {
-  origin: true, // 允许所有来源（开发环境）
+  origin: [
+    "http://localhost:5173", // 电脑本地前端
+    "http://192.168.1.76:5173", // 手机访问的前端地址（替换成你的实际IP和端口）
+  ], // 允许所有来源（开发环境）
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -48,15 +50,18 @@ app.use((err, req, res, next) => {
   });
 });
 
+
 // 启动服务
 async function startServer() {
   try {
     await connectDB();
     console.log("✅ Database connected successfully");
     
-    server.listen(PORT, () => {
-      console.log(`✅ Server running on port: ${PORT}`);
-      console.log(`✅ Socket IO ready at: http://localhost:${PORT}`);
+    // 核心修改：监听 0.0.0.0，允许局域网访问
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`✅ Server running on: http://0.0.0.0:${PORT}`);
+      console.log(`✅ LAN access: http://192.168.1.76:${PORT}`); // 打印你的局域网IP
+      console.log(`✅ Socket IO ready at: http://0.0.0.0:${PORT}`);
     });
   } catch (err) {
     console.error("❌ Server startup failed:", err);

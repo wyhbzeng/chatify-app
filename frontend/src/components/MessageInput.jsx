@@ -78,7 +78,8 @@ function MessageInput() {
             setText(e.target.value);
             isSoundEnabled && playRandomKeyStrokeSound();
           }}
-          className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-lg py-2 px-4"
+          // 关键修改：添加 text-yellow-400 或 text-green-400 类，让输入文字高亮
+          className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-lg py-2 px-4 text-yellow-400 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
           placeholder="Type your message..."
         />
 
