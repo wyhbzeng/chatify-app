@@ -1,11 +1,21 @@
 import { XIcon } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 
 function ChatHeader() {
   const { selectedUser, setSelectedUser } = useChatStore();
   const { onlineUsers } = useAuthStore();
+  
+  // 新增：移动端检测，避免和ChatPage的返回按钮重复
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // 空值保护 + 正确判断在线状态
   const isOnline = selectedUser?._id 
@@ -27,8 +37,8 @@ function ChatHeader() {
 
   return (
     <div
-      className="flex justify-between items-center bg-slate-800/50 border-b
-      border-slate-700/50 max-h-[84px] px-6 flex-1"
+      className={`flex justify-between items-center bg-slate-800/50 border-b
+      border-slate-700/50 max-h-[84px] px-6 ${isMobile ? 'hidden' : 'flex-1'}`} // 移动端隐藏，避免重复
     >
       <div className="flex items-center space-x-3">
         {/* 头像 + 在线状态指示器 */}
@@ -56,12 +66,16 @@ function ChatHeader() {
         </div>
       </div>
 
-      <button 
-        onClick={() => setSelectedUser(null)}
-        aria-label="Close chat"
-      >
-        <XIcon className="w-5 h-5 text-slate-400 hover:text-slate-200 transition-colors" />
-      </button>
+      {/* PC端保留关闭按钮，移动端隐藏 */}
+      {!isMobile && (
+        <button 
+          onClick={() => setSelectedUser(null)}
+          aria-label="Close chat"
+          className="hover:bg-slate-700/50 p-1 rounded-full transition-colors"
+        >
+          <XIcon className="w-5 h-5 text-slate-400 hover:text-slate-200 transition-colors" />
+        </button>
+      )}
     </div>
   );
 }

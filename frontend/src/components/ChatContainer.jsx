@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
@@ -17,15 +17,13 @@ function ChatContainer() {
   } = useChatStore();
   const { authUser, socket } = useAuthStore();
   const messageEndRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // 加载消息
   useEffect(() => {
     if (!selectedUser || !selectedUser._id || !authUser) return;
     
-    // 获取消息
     getMessagesByUserId(selectedUser._id);
     
-    // 订阅消息
     const subscribe = () => {
       if (socket) {
         subscribeToMessages();
@@ -34,7 +32,6 @@ function ChatContainer() {
     
     subscribe();
     
-    // 监听 Socket 连接状态
     if (socket) {
       socket.on("connect", subscribe);
     }
@@ -47,12 +44,18 @@ function ChatContainer() {
     };
   }, [selectedUser?._id, authUser?._id, socket]);
 
-  // 自动滚动
   useEffect(() => {
     if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   if (!selectedUser) {
     return (
@@ -66,12 +69,15 @@ function ChatContainer() {
 
   return (
     <div className="flex flex-col h-full bg-slate-900">
-      <ChatHeader />
-      <div className="flex-1 px-6 overflow-y-auto py-8">
+      {/* 移动端隐藏ChatHeader，避免和返回栏重复 */}
+      {!isMobile && <ChatHeader />}
+      
+      {/* 消息容器：自适应高度，底部留动态空间 */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-8">
         {isMessagesLoading ? (
           <MessagesLoadingSkeleton />
         ) : messages.length > 0 ? (
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-[90%] md:max-w-3xl mx-auto space-y-6">
             {messages.map((msg) => (
               <div
                 key={msg._id || msg.tempId}
@@ -88,11 +94,11 @@ function ChatContainer() {
                     <img 
                       src={msg.image} 
                       alt="Shared image" 
-                      className="rounded-lg h-48 w-full object-cover"
+                      className="rounded-lg h-32 md:h-48 w-full object-cover"
                       loading="lazy"
                     />
                   )}
-                  {msg.text && <p className="mt-2">{msg.text}</p>}
+                  {msg.text && <p className="mt-2 text-sm md:text-base">{msg.text}</p>}
                   <p className="text-xs mt-1 opacity-75 flex items-center gap-1 justify-end">
                     {new Date(msg.createdAt).toLocaleTimeString(undefined, {
                       hour: "2-digit",
@@ -110,7 +116,12 @@ function ChatContainer() {
         )}
       </div>
 
-      {authUser && <MessageInput />}
+      {/* 输入框：自然在底部，不挤压内容 */}
+      {authUser && (
+        <div className="shrink-0">
+          <MessageInput />
+        </div>
+      )}
     </div>
   );
 }
