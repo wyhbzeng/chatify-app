@@ -7,7 +7,6 @@ function ChatHeader() {
   const { selectedUser, setSelectedUser } = useChatStore();
   const { onlineUsers } = useAuthStore();
   
-  // 新增：移动端检测，避免和ChatPage的返回按钮重复
   const [isMobile, setIsMobile] = useState(false);
   
   useEffect(() => {
@@ -17,12 +16,10 @@ function ChatHeader() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // 空值保护 + 正确判断在线状态
   const isOnline = selectedUser?._id 
     ? onlineUsers.includes(selectedUser._id.toString()) 
     : false;
 
-  // ESC 键关闭聊天
   useEffect(() => {
     const handleEscKey = (event) => {
       if (event.key === "Escape") setSelectedUser(null);
@@ -32,16 +29,14 @@ function ChatHeader() {
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [setSelectedUser]);
 
-  // 空值保护
   if (!selectedUser) return null;
 
   return (
     <div
       className={`flex justify-between items-center bg-slate-800/50 border-b
-      border-slate-700/50 max-h-[84px] px-6 ${isMobile ? 'hidden' : 'flex-1'}`} // 移动端隐藏，避免重复
+      border-slate-700/50 h-[84px] px-6 shrink-0 ${isMobile ? 'hidden' : 'flex'}`}
     >
       <div className="flex items-center space-x-3">
-        {/* 头像 + 在线状态指示器 */}
         <div className="relative">
           <div className="w-12 h-12 rounded-full overflow-hidden">
             <img 
@@ -50,7 +45,6 @@ function ChatHeader() {
               className="w-full h-full object-cover"
             />
           </div>
-          {/* 在线状态小圆点 */}
           <span 
             className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-800 ${
               isOnline ? "bg-green-500" : "bg-slate-600"
@@ -66,7 +60,6 @@ function ChatHeader() {
         </div>
       </div>
 
-      {/* PC端保留关闭按钮，移动端隐藏 */}
       {!isMobile && (
         <button 
           onClick={() => setSelectedUser(null)}

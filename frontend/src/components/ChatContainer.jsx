@@ -57,22 +57,41 @@ function ChatContainer() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // 关键修复：没有选中用户时直接返回 null，让 ChatPage 的 NoConversationPlaceholder 接管
   if (!selectedUser) {
-    return (
-      <div className="flex flex-col h-full bg-slate-900">
-        <div className="flex-1 flex items-center justify-center text-slate-400">
-          <p>Please select a contact to start chatting</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
     <div className="flex flex-col h-full bg-slate-900">
-      {/* 移动端隐藏ChatHeader，避免和返回栏重复 */}
-      {!isMobile && <ChatHeader />}
+      {/* 顶部Header：固定高度，不滚动 */}
+      <div className="shrink-0">
+        {!isMobile ? (
+          <ChatHeader />
+        ) : (
+          <div className="bg-slate-800/50 border-b border-slate-700/50 px-4 py-3 flex items-center gap-3">
+            <button 
+              onClick={() => useChatStore.getState().setSelectedUser(null)}
+              className="text-cyan-400 flex items-center gap-1 hover:text-cyan-300 transition-colors"
+            >
+              <span className="text-xl">←</span>
+              <span className="text-sm font-medium">Back</span>
+            </button>
+            <div className="flex items-center gap-2 flex-1">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-600">
+                <img 
+                  src={selectedUser.profilePic || "/avatar.png"} 
+                  alt={selectedUser.fullName} 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="text-slate-200 font-medium text-sm truncate">{selectedUser.fullName}</span>
+            </div>
+          </div>
+        )}
+      </div>
       
-      {/* 消息容器：自适应高度，底部留动态空间 */}
+      {/* 中间消息列表：flex-1 占满剩余空间，overflow-y-auto 实现滚动 */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-8">
         {isMessagesLoading ? (
           <MessagesLoadingSkeleton />
@@ -116,7 +135,7 @@ function ChatContainer() {
         )}
       </div>
 
-      {/* 输入框：自然在底部，不挤压内容 */}
+      {/* 底部输入框：shrink-0 固定在底部，始终可见 */}
       {authUser && (
         <div className="shrink-0">
           <MessageInput />

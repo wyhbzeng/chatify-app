@@ -1,18 +1,15 @@
 import axios from "axios";
 
-// 开发阶段适配IP访问：优先用动态IP，兼容localhost和手机IP访问
+// 完全恢复你原有动态URL逻辑
 const getDynamicBaseUrl = () => {
-  // 开发环境下，自动获取当前访问的主机（localhost/192.168.1.76等）
   if (import.meta.env.MODE === "development") {
     const protocol = window.location.protocol;
     const host = window.location.hostname;
     return `${protocol}//${host}:3000/api`;
   }
-  // 生产环境保持原有逻辑
   return "/api";
 };
 
-// 替换原有硬编码的BASE_URL，其余逻辑完全不变
 const BASE_URL = getDynamicBaseUrl();
 
 export const axiosInstance = axios.create({
@@ -23,14 +20,13 @@ export const axiosInstance = axios.create({
   }
 });
 
-// 请求拦截器：只挂载token，不做多余操作
+// 完全恢复你原有请求拦截器
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // 文件上传时自动覆盖Content-Type，避免手动设置出错
     if (config.data instanceof FormData) {
       delete config.headers["Content-Type"];
     }
@@ -39,7 +35,7 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 响应拦截器：只处理401，不做多余操作
+// 简化响应拦截器：仅保留401处理，移除复杂逻辑
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
