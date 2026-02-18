@@ -25,16 +25,34 @@ const io = new Server(server, {
 // 应用认证中间件
 io.use(socketAuthMiddleware);
 
-// 在线用户映射 { userId: socketId }
+// 在线用户映射 { userId: socketId[] } 改为数组，支持多连接管理
 const userSocketMap = {};
 
 // 获取接收方 Socket ID
 export function getReceiverSocketId(userId) {
-  return userSocketMap[userId];
+  return userSocketMap[userId]?.[0]; // 取第一个有效连接
 }
 
 // 导出 io 供其他模块使用
 export { io };
+
+// 新增：断开用户所有连接的方法
+export function disconnectUserAllSockets(userId) {
+  if (!userSocketMap[userId]) return;
+  
+  userSocketMap[userId].forEach(socketId => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket) {
+      socket.disconnect(true); // 强制断开
+      console.log(`🔌 Forced disconnect socket ${socketId} for user ${userId}`);
+    }
+  });
+  
+  // 清空该用户的连接记录
+  delete userSocketMap[userId];
+  // 广播在线用户更新
+  io.emit("getOnlineUsers", Object.keys(userSocketMap));
+}
 
 // 核心 Socket 逻辑
 io.on("connection", (socket) => {
@@ -47,7 +65,20 @@ io.on("connection", (socket) => {
   // 1. 用户上线：更新在线列表并广播
   const userId = socket.userId;
   if (userId) {
-    userSocketMap[userId] = socket.id;
+    // 关键修改：同一个用户只保留一个连接（解决多端登录冲突）
+    // 先断开该用户的所有旧连接
+    if (userSocketMap[userId]) {
+      userSocketMap[userId].forEach(oldSocketId => {
+        const oldSocket = io.sockets.sockets.get(oldSocketId);
+        if (oldSocket && oldSocket.id !== socket.id) {
+          oldSocket.disconnect(true);
+          console.log(`🔌 Disconnected old socket ${oldSocketId} for user ${userId}`);
+        }
+      });
+    }
+    
+    // 初始化/更新连接列表
+    userSocketMap[userId] = [socket.id];
     // 广播在线用户列表
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   }
@@ -114,7 +145,14 @@ io.on("connection", (socket) => {
 
     // 更新在线列表
     if (userId) {
-      delete userSocketMap[userId];
+      if (userSocketMap[userId]) {
+        // 移除当前socket id
+        userSocketMap[userId] = userSocketMap[userId].filter(id => id !== socket.id);
+        // 如果没有连接了，删除用户记录
+        if (userSocketMap[userId].length === 0) {
+          delete userSocketMap[userId];
+        }
+      }
       io.emit("getOnlineUsers", Object.keys(userSocketMap));
     }
   });

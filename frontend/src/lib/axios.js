@@ -35,14 +35,25 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 简化响应拦截器：仅保留401处理，移除复杂逻辑
+// 增强响应拦截器：处理更多认证错误场景
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const errorStatus = error.response?.status;
+    const errorMsg = error.response?.data?.message || "";
+    
+    // 处理401/Token过期/无效
+    if (errorStatus === 401 || errorMsg.includes("Token") || errorMsg.includes("Unauthorized")) {
       localStorage.removeItem("token");
+      
+      // 避免重复跳转
       if (window.location.pathname !== "/login" && !window.location.pathname.includes("/signup")) {
-        window.location.href = "/login";
+        // 通知auth store执行登出
+        if (window.useAuthStore) {
+          window.useAuthStore.getState().logout();
+        } else {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);

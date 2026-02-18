@@ -3,222 +3,196 @@ import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-// 开发阶段适配IP访问：和你原有代码完全一致
-const getDynamicSocketUrl = () => {
-  if (import.meta.env.MODE === "development") {
-    const protocol = window.location.protocol;
-    const host = window.location.hostname;
-    return `${protocol}//${host}:3000`;
-  }
-  return "/";
-};
-
-const BASE_URL = getDynamicSocketUrl();
-
 export const useAuthStore = create((set, get) => ({
   authUser: null,
-  isCheckingAuth: true,
-  isSigningUp: false,
-  isLoggingIn: false,
+  token: localStorage.getItem("token") || null,
   socket: null,
   onlineUsers: [],
+  isLoading: false,
+  error: null,
 
-  // 回退：移除超时和延迟，恢复你原有checkAuth逻辑（仅保留token校验）
-  checkAuth: async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        set({ authUser: null });
-        return;
-      }
-      const res = await axiosInstance.get("/auth/check");
-      set({ authUser: res.data });
-      get().connectSocket();
-    } catch (error) {
-      console.log("Auth check error:", error);
-      localStorage.removeItem("token");
-      set({ authUser: null });
-    } finally {
-      set({ isCheckingAuth: false });
-    }
-  },
-
-  // 完全恢复你原有登录逻辑
-  login: async (data) => {
-    set({ isLoggingIn: true });
-    try {
-      const res = await axiosInstance.post("/auth/login", data);
-      set({ authUser: res.data });
-      
-      const token = res.data.token;
-      if (token) {
-        localStorage.setItem("token", token);
-        console.log("✅ Token saved to localStorage:", token.substring(0, 20) + "...");
-        toast.success("Logged in successfully");
-        await get().checkAuth(); // 恢复原有checkAuth调用
-      } else {
-        console.error("❌ No token found in response body");
-        toast.error("Login failed: No token received");
-      }
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || "Login failed!";
-      toast.error(errorMsg);
-      console.log("Login error:", error);
-    } finally {
-      set({ isLoggingIn: false });
-    }
-  },
-
-  // 完全恢复你原有注册逻辑
-  signup: async (data) => {
-    set({ isSigningUp: true });
-    try {
-      const res = await axiosInstance.post("/auth/signup", data);
-      set({ authUser: res.data });
-      
-      const token = res.data.token;
-      if (token) {
-        localStorage.setItem("token", token);
-        console.log("✅ Token saved to localStorage:", token.substring(0, 20) + "...");
-        toast.success("Account created successfully!");
-        await get().checkAuth(); // 恢复原有checkAuth调用
-      } else {
-        console.error("❌ No token found in response body");
-        toast.error("Signup failed: No token received");
-      }
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || "Signup failed!";
-      toast.error(errorMsg);
-      console.log("Signup error:", error);
-    } finally {
-      set({ isSigningUp: false });
-    }
-  },
-
-  // 完全恢复你原有登出逻辑
-  logout: async () => {
-    try {
-      await axiosInstance.post("/auth/logout");
-    } catch (error) {
-      console.log("Logout API error:", error);
-    } finally {
-      localStorage.removeItem("token");
-      set({ authUser: null });
-      get().disconnectSocket();
-      toast.success("Logged out successfully");
-    }
-  },
-
-  // 完全恢复你原有更新资料逻辑
-  updateProfile: async (formData) => {
-    try {
-      const res = await axiosInstance.put(
-        "/auth/update-profile",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      set({ authUser: res.data });
-      toast.success("Profile updated successfully");
-      return res.data;
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || "Update failed!";
-      toast.error(errorMsg);
-      console.log("Update profile error:", error);
-      throw error;
-    }
-  },
-
-  // 核心修复：仅优化Socket连接的transports，恢复你原有逻辑
-  connectSocket: () => {
-    const { authUser } = get();
+  // 初始化Socket连接
+  initSocket: () => {
+    const { token, socket } = get();
+    if (socket) return socket;
     
-    if (!authUser || !authUser._id || get().socket?.connected) {
-      console.log("Socket connection skipped: user not logged in or already connected");
-      return;
-    }
-
-    const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("No authentication token for chat");
-      console.error("❌ No token in localStorage when connecting socket");
-      return;
+      get().logout();
+      return null;
     }
 
-    get().disconnectSocket();
+    // 构建Socket连接URL
+    const baseUrl = import.meta.env.MODE === "development" 
+      ? `${window.location.protocol}//${window.location.hostname}:3000` 
+      : "";
 
-    console.log("🔌 Connecting to socket with token:", token.substring(0, 20) + "...");
-
-    // 仅保留transports修复，其余参数完全恢复你原有逻辑
-    const socket = io(BASE_URL, {
-      withCredentials: true,
+    const newSocket = io(baseUrl, {
+      transports: ["polling"],
       auth: { token },
-      transports: ["polling"], // 恢复你原有配置，避免websocket兼容问题
-      upgrade: false,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });
 
-    socket.on("connect", () => {
-      console.log("✅ Socket connected successfully");
-      toast.success("Chat connection established");
-      socket.emit("join", { userId: authUser._id.toString() });
+    // 监听连接成功
+    newSocket.on("connect", () => {
+      console.log("✅ Socket connected:", newSocket.id);
     });
 
-    socket.on("connect_error", (err) => {
-      console.error("❌ Socket connection error:", err);
-      toast.error(`Chat connection failed: ${err.message || "Authentication failed"}`);
-      set({ socket: null });
+    // 监听在线用户
+    newSocket.on("getOnlineUsers", (users) => {
+      set({ onlineUsers: users });
     });
 
-    socket.on("disconnect", (reason) => {
-      console.log("❌ Socket disconnected:", reason);
-      set({ socket: null });
-      
-      if (reason !== "io client disconnect") {
-        toast.error("Chat connection lost");
+    // 监听连接错误
+    newSocket.on("connect_error", (err) => {
+      console.error("❌ Socket connection error:", err.message);
+      if (err.message.includes("Token")) {
+        get().logout();
+        toast.error("登录已过期，请重新登录");
       }
     });
 
-    socket.on("getOnlineUsers", (userIds) => {
-      console.log("🔄 Online users updated:", userIds);
-      const validUserIds = Array.isArray(userIds) ? userIds : [];
-      set({ onlineUsers: validUserIds });
+    // 监听断开连接
+    newSocket.on("disconnect", (reason) => {
+      console.log("❌ Socket disconnected:", reason);
+      // 如果是服务器主动断开或认证失败，执行登出
+      if (reason === "io server disconnect" || reason === "transport error") {
+        get().logout();
+      }
     });
 
-    socket.on("messageError", (msg) => {
-      toast.error(msg);
-    });
-
-    set({ socket });
+    set({ socket: newSocket });
+    return newSocket;
   },
 
-  // 完全恢复你原有断开Socket逻辑
-  disconnectSocket: () => {
-    const socket = get().socket;
+  // 重新连接Socket
+  reconnectSocket: () => {
+    const { socket } = get();
     if (socket) {
       socket.disconnect();
-      toast.info("Chat connection closed");
     }
-    set({ socket: null, onlineUsers: [] });
+    set({ socket: null });
+    get().initSocket();
   },
 
-  // 完全恢复你原有重新连接逻辑
-  reconnectSocket: () => {
-    const toastId = toast.loading("Reconnecting to chat...");
-    get().disconnectSocket();
-    setTimeout(() => {
-      get().connectSocket();
-      toast.dismiss(toastId);
-    }, 1000);
+  // 注册
+  signup: async (userData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await axiosInstance.post("/auth/signup", userData);
+      const { token, ...user } = res.data;
+      
+      localStorage.setItem("token", token);
+      set({ authUser: user, token, isLoading: false });
+      
+      // 初始化Socket
+      get().initSocket();
+      
+      toast.success("注册成功");
+      return user;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || "注册失败";
+      set({ error: errorMsg, isLoading: false });
+      toast.error(errorMsg);
+      throw error;
+    }
   },
 
-  getUserId: () => {
-    const { authUser } = get();
-    return authUser?._id?.toString() || null;
-  }
+  // 登录
+  login: async (userData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await axiosInstance.post("/auth/login", userData);
+      const { token, ...user } = res.data;
+      
+      localStorage.setItem("token", token);
+      set({ authUser: user, token, isLoading: false });
+      
+      // 初始化Socket（会自动断开旧连接）
+      get().initSocket();
+      
+      toast.success("登录成功");
+      return user;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || "登录失败";
+      set({ error: errorMsg, isLoading: false });
+      toast.error(errorMsg);
+      throw error;
+    }
+  },
+
+  // 增强版登出：彻底清理所有状态
+  logout: async () => {
+    try {
+      // 先调用后端logout接口
+      await axiosInstance.post("/auth/logout");
+    } catch (error) {
+      console.log("Logout API error:", error);
+    } finally {
+      // 强制清理本地状态
+      const { socket } = get();
+      if (socket) {
+        socket.disconnect(); // 断开Socket
+        console.log("🔌 Socket disconnected on logout");
+      }
+      
+      // 清除本地存储
+      localStorage.removeItem("token");
+      
+      // 重置状态
+      set({ 
+        authUser: null, 
+        token: null, 
+        socket: null, 
+        onlineUsers: [],
+        isLoading: false,
+        error: null 
+      });
+      
+      toast.success("登出成功");
+      
+      // 跳转到登录页
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+  },
+
+  // 检查登录状态
+  checkAuth: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      get().logout();
+      return false;
+    }
+
+    set({ isLoading: true });
+    try {
+      const res = await axiosInstance.get("/auth/check");
+      set({ authUser: res.data, token, isLoading: false });
+      // 初始化Socket
+      get().initSocket();
+      return true;
+    } catch (error) {
+      get().logout();
+      return false;
+    }
+  },
+
+  // 更新用户资料
+  updateProfile: async (formData) => {
+    set({ isLoading: true });
+    try {
+      const res = await axiosInstance.put("/auth/update-profile", formData);
+      set({ authUser: res.data, isLoading: false });
+      toast.success("资料更新成功");
+      return res.data;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || "更新失败";
+      set({ error: errorMsg, isLoading: false });
+      toast.error(errorMsg);
+      throw error;
+    }
+  },
 }));

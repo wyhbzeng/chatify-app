@@ -5,6 +5,8 @@ import minioClient from "../lib/minioClient.js"; // 导入MinIO客户端
 import { ENV } from "../lib/env.js"; // 导入环境变量
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
+// 新增：导入断开Socket连接的方法
+import { disconnectUserAllSockets } from "../lib/socket.js";
 
 // 生成JWT Token
 const generateToken = (userId) => {
@@ -71,6 +73,9 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    // 关键修改：登录时先断开该用户的所有旧连接
+    disconnectUserAllSockets(user._id.toString());
+
     // 生成Token
     const token = generateToken(user._id);
 
@@ -88,9 +93,14 @@ export const login = async (req, res) => {
   }
 };
 
-// 登出（前端清除Token即可，后端无需额外操作）
+// 登出（增强版：断开Socket连接）
 export const logout = async (req, res) => {
   try {
+    // 如果有用户信息，断开其所有Socket连接
+    if (req.user && req.user._id) {
+      disconnectUserAllSockets(req.user._id.toString());
+    }
+    
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     console.log("Error in logout controller", error);

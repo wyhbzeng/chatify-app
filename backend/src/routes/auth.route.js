@@ -16,7 +16,8 @@ const upload = multer({
 
 router.post("/signup", signup);
 router.post("/login", login);
-router.post("/logout", logout);
+// 关键修改：logout需要认证，才能获取用户信息并断开Socket
+router.post("/logout", protectRoute, logout);
 
 // 3. 关键补充：在路由中添加 upload.single('profilePic') 中间件
 //    注意顺序：protectRoute（认证） -> upload（解析文件） -> updateProfile（业务逻辑）
