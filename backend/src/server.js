@@ -5,6 +5,7 @@ import cors from "cors";
 
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
+import weighingRoutes from "./routes/weighing.route.js";
 import { connectDB } from "./lib/db.js";
 import { ENV } from "./lib/env.js";
 import { app, server } from "./lib/socket.js";
@@ -32,6 +33,7 @@ app.use(cookieParser());
 // 路由配置
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/weighing", weighingRoutes);
 
 // 生产环境静态资源托管
 if (ENV.NODE_ENV === "production") {

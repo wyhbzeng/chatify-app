@@ -33,3 +33,66 @@
   @apply px-4 py-2 inline-block bg-cyan-500/10 rounded-lg text-cyan-400
   hover:text-cyan-500 text-sm transition-colors;
 }
+
+@layer utilities {
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 6px rgba(6, 182, 212, 0.4), 0 0 10px rgba(6, 182, 212, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4);
+    }
+  }
+}
+
+/* 顶部导航栏容器 */
+.top-nav-container {
+  position: relative;
+  background: linear-gradient(135deg, #051a3a 0%, #0a2a5a 50%, #051a3a 100%);
+  border-bottom: 1px solid rgba(6, 182, 212, 0.5);
+  overflow: hidden;
+}
+
+/* 顶部蓝色渐变条（模拟截图中的顶部装饰） */
+.top-nav-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(90deg, 
+    #06b6d4 0%, 
+    #22d3ee 20%, 
+    #06b6d4 40%, 
+    #22d3ee 60%, 
+    #06b6d4 80%, 
+    #22d3ee 100%
+  );
+  animation: slide 8s linear infinite;
+}
+
+/* 小灯点动画（可选，增强科技感） */
+.top-nav-container::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 20%;
+  width: 4px;
+  height: 4px;
+  background: #22d3ee;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #22d3ee;
+  animation: light-move 5s linear infinite;
+}
+
+@keyframes slide {
+  0% { background-position: 0 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes light-move {
+  0% { left: 20%; opacity: 0.8; }
+  50% { left: 80%; opacity: 1; }
+  100% { left: 20%; opacity: 0.8; }
+}
