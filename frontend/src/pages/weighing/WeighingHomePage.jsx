@@ -58,7 +58,6 @@ const WeighingHomePage = () => {
   const limit = 10;
   const [weight, setWeight] = useState('33300');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const fullScreenRef = useRef(null);
 
   const [formData, setFormData] = useState({
     grossWeight: '',
@@ -114,10 +113,11 @@ const WeighingHomePage = () => {
     }
   }, [isLoading, records.length, total]);
 
-  // 全屏
+  // 全屏 —— 只改了这里！让 #root 全屏，toast 就能显示
   const handleFullscreen = () => {
+    const rootEl = document.getElementById('root');
     if (!document.fullscreenElement) {
-      fullScreenRef.current?.requestFullscreen().catch(() => {});
+      rootEl?.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
     } else {
       document.exitFullscreen();
@@ -211,7 +211,6 @@ const WeighingHomePage = () => {
 
   return (
     <div 
-      ref={fullScreenRef} 
       className="h-screen w-full bg-[#051020] text-cyan-100 flex flex-col relative z-0"
     >
       <div className="relative z-20">
@@ -224,12 +223,10 @@ const WeighingHomePage = () => {
             <StatusLights />
             <WeightDisplay weight={weight} status={{ stable: true, transmitting: true }} />
             
-            {/* 表单区域：使用 flex-1 占据空间，为下方按钮留出呼吸感 */}
             <div className="flex-1 mt-2">
               <WeighingForm formData={formData} onChange={handleFormChange} />
             </div>
 
-            {/* 操作按钮区域：增加 mt-6 与上方表单拉开距离，并使用 mt-auto 靠下 */}
             <div className="mt-6 mt-auto">
               <OperationPanel
                 onHeavyTruck={handleHeavyTruck}
