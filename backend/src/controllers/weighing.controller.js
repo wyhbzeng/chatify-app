@@ -144,3 +144,23 @@ export const syncOfflineRecords = async (req, res) => {
     res.status(500).json({ message: "同步离线记录失败: " + error.message });
   }
 };
+
+// 4. 补全：删除称重记录
+export const deleteWeighingRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 检查记录是否存在
+    const record = await WeighingRecord.findById(id);
+    if (!record) {
+      return res.status(404).json({ message: "称重记录不存在" });
+    }
+
+    // 删除记录
+    await WeighingRecord.findByIdAndDelete(id);
+    res.status(200).json({ message: "称重记录删除成功" });
+  } catch (error) {
+    console.error("删除称重记录失败:", error);
+    res.status(500).json({ message: "删除称重记录失败: " + error.message });
+  }
+};

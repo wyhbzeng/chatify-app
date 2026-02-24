@@ -1,105 +1,278 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-// 移除了 Maximize2, Minimize2 的导入，因为现在在子组件中使用
+import React, { useState, useRef, useCallback } from 'react';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useWeighingStore } from '../../store/useWeighingStore';
+import toast from 'react-hot-toast';
 
-// 导入子组件
-import WeighingTopNav from '../../components/weighing/WeighingTopNav';
-import WeighingStatusLights from '../../components/weighing/WeighingStatusLights';
-import WeighingDisplay from '../../components/weighing/WeighingDisplay';
-import WeighingTruckModel from '../../components/weighing/WeighingTruckModel';
+// 导入组件
+import WeighingDataTable from '../../components/weighing/WeighingDataTable';
+import BottomActionBar from '../../components/weighing/BottomActionBar';
 import WeighingForm from '../../components/weighing/WeighingForm';
-import WeighingActionButtons from '../../components/weighing/WeighingActionButtons';
-import WeighingRecordsTable from '../../components/weighing/WeighingRecordsTable';
+import VehicleVisual from '../../components/weighing/VehicleVisual';
+import OperationPanel from '../../components/weighing/OperationPanel';
+import WeightDisplay from '../../components/weighing/WeightDisplay';
+import WeighingHeader from '../../components/weighing/WeighingHeader';
+
+// 状态灯
+const StatusLights = React.memo(() => {
+  const lights = [
+    { color: 'red', active: true },
+    { color: 'green', active: true },
+    { color: 'red', active: true },
+    { color: 'green', active: true },
+    { color: 'red', active: true },
+    { color: 'green', active: true },
+    { color: 'red', active: true },
+    { color: 'green', active: true },
+    { color: 'red', active: true },
+    { color: 'green', active: true },
+  ];
+
+  return (
+    <div className="flex justify-center gap-1.5 py-1 relative z-10">
+      {lights.map((light, idx) => (
+        <div
+          key={idx}
+          className={`w-1.5 h-1.5 rounded-full ${
+            light.active
+              ? light.color === 'red'
+                ? 'bg-red-500'
+                : 'bg-green-500'
+              : 'bg-gray-600'
+          }`}
+        />
+      ))}
+    </div>
+  );
+});
 
 const WeighingHomePage = () => {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({
-    grossWeight: 0,
-    tareWeight: 0,
-    netWeight: 0,
-    actualWeight: 0,
-    vehicleNo: '',
+  // 核心状态
+  const authUser = useAuthStore.getState().authUser;
+  const displayName = authUser?.fullName || authUser?.username || '用户';
+
+  const { fetchWeighingRecords, createWeighingRecord, deleteWeighingRecord } = useWeighingStore();
+
+  const [records, setRecords] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const [weight, setWeight] = useState('33300');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullScreenRef = useRef(null);
+
+  const [formData, setFormData] = useState({
+    grossWeight: '',
+    tareWeight: '',
+    netWeight: '',
+    actualWeight: weight,
+    carNo: '',
+    sender: '',
+    receiver: '',
+    amount: '0',
     goodsName: '',
-    specification: '',
-    senderUnit: '',
-    receiverUnit: '',
-    amount: 0,
+    spec: '普通',
     remark: '',
   });
 
-  // 全屏功能相关代码（保留状态和逻辑，仅移除页面上的独立按钮）
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const containerRef = useRef(null);
+  const fetchLock = useRef(false);
+  const savingLock = useRef(false);
 
-  const toggleFullscreen = async () => {
-    if (!containerRef.current) return;
+  // 加载记录
+  const loadRecords = useCallback(async (params = {}) => {
+    if (fetchLock.current) return;
+    fetchLock.current = true;
+    setIsLoading(true);
     try {
-      if (!document.fullscreenElement) {
-        await containerRef.current.requestFullscreen();
-        setIsFullscreen(true);
-      } else {
-        await document.exitFullscreen();
-        setIsFullscreen(false);
-      }
+      const res = await fetchWeighingRecords({
+        page: params.page || page,
+        limit,
+        append: params.append || (page > 1)
+      });
+      const list = res?.data || [];
+      const safeData = Array.isArray(list) ? list : [];
+      setTotal(res?.pagination?.total || 0);
+      setRecords(prev => params.append ? [...prev, ...safeData] : safeData);
     } catch (err) {
-      console.error('全屏切换失败:', err);
+      console.error('加载失败:', err);
+      toast.error('加载称重记录失败！');
+    } finally {
+      fetchLock.current = false;
+      setIsLoading(false);
+    }
+  }, [fetchWeighingRecords, page, limit]);
+
+  // 首次加载
+  React.useEffect(() => {
+    loadRecords();
+  }, [loadRecords]);
+
+  // 滚动加载
+  const handleScroll = useCallback((e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    const isBottom = scrollTop + clientHeight >= scrollHeight - 50;
+    if (isBottom && !isLoading && records.length < total) {
+      setPage(prev => prev + 1);
+    }
+  }, [isLoading, records.length, total]);
+
+  // 全屏
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      fullScreenRef.current?.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
     }
   };
 
-  // 操作按钮回调
-  const handleHeavy = () => { /* 重车逻辑 */ };
-  const handleEmpty = () => { /* 空车逻辑 */ };
-  const handleSaveTare = () => { /* 存皮逻辑 */ };
-  const handleSave = () => { /* 保存逻辑 */ };
-  const handlePrint = () => { /* 打印逻辑 */ };
-  const handleClear = () => { setForm({ /* 重置表单 */ }); };
+  // 表单改变
+  const handleFormChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-  const cardStyle = "bg-gradient-to-br from-cyan-900/40 to-cyan-800/20 border border-cyan-700/50 rounded-xl shadow-lg shadow-cyan-900/20 p-6";
+  // 保存
+  const handleSave = async () => {
+    if (savingLock.current) return;
+    if (!formData.carNo?.trim() || !formData.goodsName?.trim()) {
+      toast.error('车号和货名不能为空！');
+      return;
+    }
 
+    savingLock.current = true;
+    const payload = {
+      vehicleNo: formData.carNo.trim(),
+      goodsName: formData.goodsName.trim(),
+      specification: formData.spec,
+      senderUnit: formData.sender,
+      receiverUnit: formData.receiver,
+      grossWeight: formData.grossWeight,
+      tareWeight: formData.tareWeight,
+      netWeight: formData.netWeight,
+      remark: formData.remark,
+      operatorId: authUser?._id,
+      isOffline: false,
+      syncStatus: 'synced'
+    };
+
+    try {
+      await createWeighingRecord(payload);
+      setFormData({
+        grossWeight: '',
+        tareWeight: '',
+        netWeight: '',
+        actualWeight: weight,
+        carNo: '',
+        sender: '',
+        receiver: '',
+        amount: '0',
+        goodsName: '',
+        spec: '普通',
+        remark: '',
+      });
+      setPage(1);
+      loadRecords({ page: 1, append: false });
+    } catch (err) {
+      console.error('保存失败:', err);
+    } finally {
+      savingLock.current = false;
+    }
+  };
+
+  // 删除
+  const handleDelete = async (id) => {
+    try {
+      await deleteWeighingRecord(id);
+      setRecords(prev => prev.filter(item => item._id !== id));
+    } catch (err) {
+      console.error('删除失败:', err);
+    }
+  };
+
+  // 清空
+  const handleClear = () => {
+    setFormData({
+      grossWeight: '',
+      tareWeight: '',
+      netWeight: '',
+      actualWeight: weight,
+      carNo: '',
+      sender: '',
+      receiver: '',
+      amount: '0',
+      goodsName: '',
+      spec: '普通',
+      remark: '',
+    });
+  };
+
+  // 空方法
+  const handleHeavyTruck = () => {};
+  const handleEmptyTruck = () => {};
+  const handleSaveTare = () => {};
+  const handlePrint = () => {};
+
+  // ==========================
+  // 核心修复：提升所有交互区域的 z-index，使其高于全局遮罩层
+  // ==========================
   return (
-    <div ref={containerRef} className="min-h-screen w-full bg-[#051020] text-cyan-100 relative">
-      {/* 移除了右上角的全屏独立按钮 */}
-      <WeighingTopNav />
+    <div 
+      ref={fullScreenRef} 
+      className="h-screen w-full bg-[#051020] text-cyan-100 flex flex-col relative z-0"
+    >
+      {/* 提升顶部栏的层级 */}
+      <div className="relative z-20">
+        <WeighingHeader userName={displayName} />
+      </div>
 
-      <div className="px-6 py-6">
-        <div className="grid grid-cols-12 gap-6 mb-6">
-          <div className={`col-span-8 ${cardStyle} flex flex-col justify-between`}>
-            <WeighingStatusLights />
-            
-            <div className="flex flex-col items-center justify-center my-2 translate-y-[100px]">
-              <div className="border-2 border-cyan-400/60 rounded-lg p-6 bg-[#051a3a]/60 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
-                <WeighingDisplay currentWeight="12,345" />
-                <div className="w-full max-w-md h-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 rounded-full mt-1 animate-pulse"></div>
-              </div>
-            </div>
-            
-            <div className="mt-auto flex justify-center">
-              {/* 向操作按钮组件传递全屏相关props */}
-              <WeighingActionButtons
-                onHeavy={handleHeavy}
-                onEmpty={handleEmpty}
-                onSaveTare={handleSaveTare}
-                onSave={handleSave}
-                onPrint={handlePrint}
-                onClear={handleClear}
-                isFullscreen={isFullscreen}
-                onToggleFullscreen={toggleFullscreen}
-              />
-            </div>
+      <div className="flex-1 flex flex-col p-2 gap-2 w-full relative z-10">
+        {/* 上半区容器 */}
+        <div className="flex flex-col md:flex-row gap-2 h-[360px] shrink-0">
+          {/* 表单操作区（核心交互，提升层级） */}
+          <div className="flex-[2] bg-[#0a1a2f] rounded-lg p-2 flex flex-col border border-cyan-900/50 relative z-20">
+            <StatusLights />
+            <WeightDisplay weight={weight} status={{ stable: true, transmitting: true }} />
+            <WeighingForm formData={formData} onChange={handleFormChange} />
+            <OperationPanel
+              onHeavyTruck={handleHeavyTruck}
+              onEmptyTruck={handleEmptyTruck}
+              onSaveTare={handleSaveTare}
+              onSave={handleSave}
+              onPrint={handlePrint}
+              onClear={handleClear}
+              onFullscreen={handleFullscreen}
+              isFullscreen={isFullscreen}
+            />
           </div>
 
-          <div className={`col-span-4 ${cardStyle} flex justify-center items-center h-full`}>
-            <WeighingTruckModel />
+          {/* 车辆可视化区 */}
+          <div className="flex-[1] bg-[#0a1a2f] rounded-lg p-2 flex items-center justify-center border border-cyan-900/50 relative z-10">
+            <VehicleVisual />
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
-          <div className={`col-span-12 ${cardStyle}`}>
-            <div className="mb-8">
-              <WeighingForm form={form} setForm={setForm} />
-            </div>
-            <WeighingRecordsTable />
+        {/* 表格区（提升层级） */}
+        <div className="flex-1 bg-[#0a1a2f] rounded-lg flex flex-col overflow-hidden border border-cyan-900/50 relative z-20">
+          <div 
+            className="flex-1 overflow-y-auto" 
+            onScroll={handleScroll}
+          >
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-[#051020]/80 z-50">
+                <span className="text-cyan-200">加载中...</span>
+              </div>
+            )}
+            <WeighingDataTable data={records} onDelete={handleDelete} />
           </div>
+
+          <BottomActionBar
+            onRefresh={() => {
+              setPage(1);
+              loadRecords({ page: 1, append: false });
+            }}
+            total={total}
+          />
         </div>
       </div>
     </div>
