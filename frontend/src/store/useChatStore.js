@@ -37,7 +37,7 @@ export const useChatStore = create((set, get) => ({
       set({ allContacts: res.data });
     } catch (error) {
       const errorMsg = error.response?.data?.message || "Failed to load contacts";
-      toast.error(errorMsg);
+      toast.error(errorMsg, { containerId: "toast-global" });
       console.log("Get contacts error:", error);
     } finally {
       set({ isUsersLoading: false });
@@ -51,7 +51,7 @@ export const useChatStore = create((set, get) => ({
       set({ chats: res.data });
     } catch (error) {
       const errorMsg = error.response?.data?.message || "Failed to load chats";
-      toast.error(errorMsg);
+      toast.error(errorMsg, { containerId: "toast-global" });
       console.log("Get chats error:", error);
     } finally {
       set({ isUsersLoading: false });
@@ -77,7 +77,7 @@ export const useChatStore = create((set, get) => ({
       set({ messages: formattedMessages });
     } catch (error) {
       const errorMsg = error.response?.data?.message || "Failed to load messages";
-      toast.error(errorMsg);
+      toast.error(errorMsg, { containerId: "toast-global" });
       console.log("Get messages error:", error);
     } finally {
       set({ isMessagesLoading: false });
@@ -90,11 +90,11 @@ export const useChatStore = create((set, get) => ({
     const { authUser, socket } = useAuthStore.getState();
 
     if (!selectedUser || !authUser) {
-      toast.error("Please select a contact to chat");
+      toast.error("Please select a contact to chat", { containerId: "toast-global" });
       return;
     }
     if (!socket || !socket.connected) {
-      toast.error("Chat connection lost, reconnecting...");
+      toast.error("Chat connection lost, reconnecting...", { containerId: "toast-global" });
       useAuthStore.getState().reconnectSocket();
       return;
     }
@@ -169,7 +169,7 @@ export const useChatStore = create((set, get) => ({
       }
       
       const errorMsg = error.response?.data?.message || "Failed to send message";
-      toast.error(errorMsg);
+      toast.error(errorMsg, { containerId: "toast-global" });
       console.log("Send message error:", error);
     }
   },

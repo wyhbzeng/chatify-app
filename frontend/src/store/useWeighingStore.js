@@ -18,7 +18,7 @@ export const useWeighingStore = create((set, get) => ({
     const { token } = useAuthStore.getState();
 
     if (!token) {
-      toast.error("请先登录");
+      toast.error("请先登录", { containerId: "toast-global" });
       set({ isLoading: false });
       useAuthStore.getState().logout();
       return [];
@@ -36,10 +36,10 @@ export const useWeighingStore = create((set, get) => ({
       const errorMsg = error.response?.data?.message || "获取称重记录失败";
 
       if (error.response?.status === 401) {
-        toast.error("登录已过期，请重新登录");
+        toast.error("登录已过期，请重新登录", { containerId: "toast-global" });
         useAuthStore.getState().logout();
       } else {
-        toast.error(errorMsg);
+        toast.error(errorMsg, { containerId: "toast-global" });
       }
 
       set({ error: errorMsg, isLoading: false, records: [] });
@@ -52,7 +52,7 @@ export const useWeighingStore = create((set, get) => ({
     const { token } = useAuthStore.getState();
 
     if (!token) {
-      toast.error("请先登录");
+      toast.error("请先登录", { containerId: "toast-global" });
       set({ isLoading: false });
       return null;
     }
@@ -63,17 +63,17 @@ export const useWeighingStore = create((set, get) => ({
         records: [newRecord, ...get().records],
         isLoading: false,
       });
-      toast.success("保存成功");
+      toast.success("保存成功", { containerId: "toast-global" });
       return newRecord;
     } catch (error) {
       console.error("创建称重记录失败:", error);
       const errorMsg = error.response?.data?.message || "保存失败";
 
       if (error.response?.status === 401) {
-        toast.error("登录已过期，请重新登录");
+        toast.error("登录已过期，请重新登录", { containerId: "toast-global" });
         useAuthStore.getState().logout();
       } else {
-        toast.error(errorMsg);
+        toast.error(errorMsg, { containerId: "toast-global" });
       }
 
       set({ error: errorMsg, isLoading: false });
@@ -86,7 +86,7 @@ export const useWeighingStore = create((set, get) => ({
     const { token } = useAuthStore.getState();
 
     if (!token) {
-      toast.error("请先登录");
+      toast.error("请先登录", { containerId: "toast-global" });
       set({ isLoading: false });
       return;
     }
@@ -97,16 +97,16 @@ export const useWeighingStore = create((set, get) => ({
         records: get().records.filter((item) => item._id !== id),
         isLoading: false,
       });
-      toast.success("删除成功");
+      toast.success("删除成功", { containerId: "toast-global" });
     } catch (error) {
       console.error("删除称重记录失败:", error);
       const errorMsg = error.response?.data?.message || "删除失败";
 
       if (error.response?.status === 401) {
-        toast.error("登录已过期，请重新登录");
+        toast.error("登录已过期，请重新登录", { containerId: "toast-global" });
         useAuthStore.getState().logout();
       } else {
-        toast.error(errorMsg);
+        toast.error(errorMsg, { containerId: "toast-global" });
       }
 
       set({ error: errorMsg, isLoading: false });
@@ -119,13 +119,13 @@ export const useWeighingStore = create((set, get) => ({
     try {
       const data = await syncOfflineRecords(records);
       set({ isLoading: false });
-      toast.success("离线同步成功");
+      toast.success("离线同步成功", { containerId: "toast-global" });
       return data;
     } catch (error) {
       console.error("离线同步失败:", error);
       const errorMsg = error.response?.data?.message || "离线同步失败";
       set({ error: errorMsg, isLoading: false });
-      toast.error(errorMsg);
+      toast.error(errorMsg, { containerId: "toast-global" });
       throw error;
     }
   },

@@ -49,7 +49,7 @@ export const useAuthStore = create((set, get) => ({
       console.error("❌ Socket connection error:", err.message);
       if (err.message.includes("Token")) {
         get().logout();
-        toast.error("登录已过期，请重新登录");
+        toast.error("登录已过期，请重新登录", { containerId: "toast-global" });
       }
     });
 
@@ -89,12 +89,12 @@ export const useAuthStore = create((set, get) => ({
       // 初始化Socket
       get().initSocket();
       
-      toast.success("注册成功");
+      toast.success("注册成功", { containerId: "toast-global" });
       return user;
     } catch (error) {
       const errorMsg = error.response?.data?.message || "注册失败";
       set({ error: errorMsg, isLoading: false });
-      toast.error(errorMsg);
+      toast.error(errorMsg, { containerId: "toast-global" });
       throw error;
     }
   },
@@ -112,12 +112,12 @@ export const useAuthStore = create((set, get) => ({
       // 初始化Socket（会自动断开旧连接）
       get().initSocket();
       
-      toast.success("登录成功");
+      toast.success("登录成功", { containerId: "toast-global" });
       return user;
     } catch (error) {
       const errorMsg = error.response?.data?.message || "登录失败";
       set({ error: errorMsg, isLoading: false });
-      toast.error(errorMsg);
+      toast.error(errorMsg, { containerId: "toast-global" });
       throw error;
     }
   },
@@ -150,7 +150,7 @@ export const useAuthStore = create((set, get) => ({
         error: null 
       });
       
-      toast.success("登出成功");
+      toast.success("登出成功", { containerId: "toast-global" });
       
       // 跳转到登录页
       if (window.location.pathname !== "/login") {
@@ -186,12 +186,12 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.put("/auth/update-profile", formData);
       set({ authUser: res.data, isLoading: false });
-      toast.success("资料更新成功");
+      toast.success("资料更新成功", { containerId: "toast-global" });
       return res.data;
     } catch (error) {
       const errorMsg = error.response?.data?.message || "更新失败";
       set({ error: errorMsg, isLoading: false });
-      toast.error(errorMsg);
+      toast.error(errorMsg, { containerId: "toast-global" });
       throw error;
     }
   },

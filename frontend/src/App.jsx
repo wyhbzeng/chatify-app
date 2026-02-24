@@ -16,13 +16,13 @@ function App() {
 
   useEffect(() => {
     checkAuth();
-    
+
     // 🔥 强制移除所有可能拦截输入的元素
     const fixInputBlock = () => {
-      const toasterContainer = document.querySelector('[data-rht-toaster]');
+      const toasterContainer = document.querySelector("[data-rht-toaster][id='toast-global']");
       if (toasterContainer) {
-        toasterContainer.style.pointerEvents = 'none';
-        toasterContainer.style.zIndex = 'auto'; // 把它放到页面后面
+        toasterContainer.style.pointerEvents = "none";
+        toasterContainer.style.zIndex = "auto"; // 把它放到页面后面
       }
     };
 
@@ -44,15 +44,43 @@ function App() {
       <div className="absolute bottom-0 -right-4 size-96 bg-cyan-500 opacity-20 blur-[100px]" />
 
       <Routes>
-        <Route path="/" element={authUser ? <AppSelectionPage /> : <Navigate to="/login" />} />
-        <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
-        <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
-        <Route path="/chat" element={authUser ? <ChatPage /> : <Navigate to="/login" />} />
-        <Route path="/weighing" element={authUser ? <WeighingHomePage /> : <Navigate to="/login" />} />
-        <Route path="/weighing/records" element={authUser ? <WeighingRecordsPage /> : <Navigate to="/login" />} />
+        <Route
+          path="/"
+          element={authUser ? <AppSelectionPage /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/login"
+          element={!authUser ? <LoginPage /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/signup"
+          element={!authUser ? <SignUpPage /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/chat"
+          element={authUser ? <ChatPage /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/weighing"
+          element={authUser ? <WeighingHomePage /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/weighing/records"
+          element={
+            authUser ? <WeighingRecordsPage /> : <Navigate to="/login" />
+          }
+        />
       </Routes>
 
-      <Toaster />
+      {/* 全局 Toaster：处理登录/登出等全局消息 */}
+      <Toaster
+        containerId="toast-global"
+        position="top-center"
+        toastOptions={{
+          id: "global-toast",
+        }}
+        containerProps={{ id: "toast-global" }}
+      />
     </div>
   );
 }
