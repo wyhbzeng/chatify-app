@@ -13,9 +13,10 @@ const roleSchema = new mongoose.Schema({
   remark: { type: String, default: "" },
 }, { timestamps: true });
 
-// 确保同一组织下，角色名和编码唯一
-roleSchema.index({ roleName: 1, organizationId: 1 }, { unique: true });
-roleSchema.index({ roleCode: 1, organizationId: 1 }, { unique: true });
+// 同一组织内：角色编码唯一
+roleSchema.index({ organizationId: 1, roleCode: 1 }, { unique: true });
+// 同一组织内：角色名称唯一
+roleSchema.index({ organizationId: 1, roleName: 1 }, { unique: true });
 
 const Role = mongoose.models.Role || mongoose.model("Role", roleSchema);
 
