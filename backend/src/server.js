@@ -6,6 +6,9 @@ import cors from "cors";
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import weighingRoutes from "./routes/weighing.route.js";
+import roleRoutes from "./routes/role.route.js";
+import menuRoutes from "./routes/menu.route.js";
+import organizationRoutes from "./routes/organization.route.js";
 import { connectDB } from "./lib/db.js";
 import { ENV } from "./lib/env.js";
 import { app, server } from "./lib/socket.js";
@@ -34,6 +37,9 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/weighing", weighingRoutes);
+app.use("/api/role", roleRoutes);
+app.use('/api/menu', menuRoutes);
+app.use('/api/organization', organizationRoutes);
 
 // 生产环境静态资源托管
 if (ENV.NODE_ENV === "production") {

@@ -76,6 +76,13 @@ const WeighingHomePage = () => {
   const fetchLock = useRef(false);
   const savingLock = useRef(false);
 
+  // ====================== 新增：是否可以保存 ======================
+  const canSave =
+    formData.carNo?.trim() !== '' &&
+    formData.goodsName?.trim() !== '' &&
+    Number(weight) > 0;
+  // ==============================================================
+
   // 加载记录
   const loadRecords = useCallback(async (params = {}) => {
     if (fetchLock.current) return;
@@ -113,7 +120,7 @@ const WeighingHomePage = () => {
     }
   }, [isLoading, records.length, total]);
 
-  // 全屏 —— 只改了这里！让 #root 全屏，toast 就能显示
+  // 全屏
   const handleFullscreen = () => {
     const rootEl = document.getElementById('root');
     if (!document.fullscreenElement) {
@@ -237,6 +244,7 @@ const WeighingHomePage = () => {
                 onClear={handleClear}
                 onFullscreen={handleFullscreen}
                 isFullscreen={isFullscreen}
+                canSave={canSave}
               />
             </div>
           </div>

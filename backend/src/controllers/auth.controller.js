@@ -1,4 +1,4 @@
-import User from "../models/User.js";
+import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import minioClient from "../lib/minioClient.js"; // 导入MinIO客户端
@@ -20,38 +20,38 @@ export const signup = async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
 
-    // 检查用户是否已存在
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already in use" });
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
-    // 哈希密码
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 创建新用户
     const newUser = new User({
       fullName,
       email,
       password: hashedPassword,
+      // 这里不写 organizationId，让它为空
     });
 
     await newUser.save();
 
-    // 生成Token
     const token = generateToken(newUser._id);
 
-    // 返回用户信息（不含密码）+ Token
     res.status(201).json({
       _id: newUser._id,
       fullName: newUser.fullName,
       email: newUser.email,
-      profilePic: newUser.profilePic,
+      organizationId: newUser.organizationId, // 这里是 null
       token,
     });
   } catch (error) {
-    console.log("Error in signup controller", error);
+    console.log("Error in signup:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -85,6 +85,7 @@ export const login = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      organizationId: user.organizationId, // 新增：返回组织ID
       token,
     });
   } catch (error) {

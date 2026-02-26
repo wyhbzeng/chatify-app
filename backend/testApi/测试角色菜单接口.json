@@ -1,0 +1,1200 @@
+{
+	"info": {
+	  "_postman_id": "multi-org-role-menu-full-test",
+	  "name": "多组织权限系统完整测试",
+	  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+	  {
+		"key": "baseUrl",
+		"value": "http://192.168.1.76:3000/api"
+	  }
+	],
+	"item": [
+	  {
+		"name": "00-登录获取Token（超级管理员）",
+		"request": {
+		  "method": "POST",
+		  "header": [],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n    \"email\": \"289797421@qq.com\",\n    \"password\": \"123456\"\n}",
+			"options": {
+			  "raw": {
+				"language": "json"
+			  }
+			}
+		  },
+		  "url": {
+			"raw": "{{baseUrl}}/auth/login",
+			"host": ["{{baseUrl}}"],
+			"path": ["auth", "login"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"if (res.token) {",
+				"    pm.environment.set(\"token\", res.token);",
+				"}",
+				"pm.test(\"登录成功\", function () {",
+				"    pm.response.to.have.status(200);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  },
+	  {
+		"name": "01-组织-批量创建",
+		"item": [
+		  {
+			"name": "01-1 创建A公司",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"orgName\": \"A公司\",\n    \"orgCode\": \"COMPANY_A\",\n    \"status\": true,\n    \"remark\": \"A公司-生产制造\"\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/organization/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["organization", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const orgIdA = res.data._id;",
+					"if (orgIdA) {",
+					"    pm.environment.set(\"orgIdA\", orgIdA);",
+					"}",
+					"pm.test(\"A公司创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "01-2 创建B公司",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"orgName\": \"B公司\",\n    \"orgCode\": \"COMPANY_B\",\n    \"status\": true,\n    \"remark\": \"B公司-贸易零售\"\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/organization/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["organization", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const orgIdB = res.data._id;",
+					"if (orgIdB) {",
+					"    pm.environment.set(\"orgIdB\", orgIdB);",
+					"}",
+					"pm.test(\"B公司创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "01-3 创建C公司",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"orgName\": \"C公司\",\n    \"orgCode\": \"COMPANY_C\",\n    \"status\": true,\n    \"remark\": \"C公司-科技研发\"\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/organization/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["organization", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const orgIdC = res.data._id;",
+					"if (orgIdC) {",
+					"    pm.environment.set(\"orgIdC\", orgIdC);",
+					"}",
+					"pm.test(\"C公司创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  }
+		]
+	  },
+	  {
+		"name": "02-菜单-为A公司创建完整菜单树",
+		"item": [
+		  {
+			"name": "02-1 一级菜单：系统管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"系统管理\",\n    \"path\": \"/system\",\n    \"component\": \"Layout\",\n    \"parentId\": null,\n    \"menuType\": \"M\",\n    \"icon\": \"setting\",\n    \"sort\": 1,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA1 = res.data._id;",
+					"if (menuIdA1) {",
+					"    pm.environment.set(\"menuIdA1\", menuIdA1);",
+					"}",
+					"pm.test(\"一级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-2 二级菜单：用户管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"用户管理\",\n    \"path\": \"/system/user\",\n    \"component\": \"User\",\n    \"parentId\": \"{{menuIdA1}}\",\n    \"menuType\": \"M\",\n    \"icon\": \"user\",\n    \"sort\": 1,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA2 = res.data._id;",
+					"if (menuIdA2) {",
+					"    pm.environment.set(\"menuIdA2\", menuIdA2);",
+					"}",
+					"pm.test(\"二级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-3 二级菜单：角色管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"角色管理\",\n    \"path\": \"/system/role\",\n    \"component\": \"Role\",\n    \"parentId\": \"{{menuIdA1}}\",\n    \"menuType\": \"M\",\n    \"icon\": \"role\",\n    \"sort\": 2,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA3 = res.data._id;",
+					"if (menuIdA3) {",
+					"    pm.environment.set(\"menuIdA3\", menuIdA3);",
+					"}",
+					"pm.test(\"二级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-4 一级菜单：称重系统",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"称重系统\",\n    \"path\": \"/weighing\",\n    \"component\": \"Layout\",\n    \"parentId\": null,\n    \"menuType\": \"M\",\n    \"icon\": \"scale\",\n    \"sort\": 2,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA4 = res.data._id;",
+					"if (menuIdA4) {",
+					"    pm.environment.set(\"menuIdA4\", menuIdA4);",
+					"}",
+					"pm.test(\"一级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-5 二级菜单：称重记录",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"称重记录\",\n    \"path\": \"/weighing/record\",\n    \"component\": \"WeighingRecord\",\n    \"parentId\": \"{{menuIdA4}}\",\n    \"menuType\": \"M\",\n    \"icon\": \"list\",\n    \"sort\": 1,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA5 = res.data._id;",
+					"if (menuIdA5) {",
+					"    pm.environment.set(\"menuIdA5\", menuIdA5);",
+					"}",
+					"pm.test(\"二级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-6 二级菜单：设备管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"设备管理\",\n    \"path\": \"/weighing/device\",\n    \"component\": \"Device\",\n    \"parentId\": \"{{menuIdA4}}\",\n    \"menuType\": \"M\",\n    \"icon\": \"device\",\n    \"sort\": 2,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA6 = res.data._id;",
+					"if (menuIdA6) {",
+					"    pm.environment.set(\"menuIdA6\", menuIdA6);",
+					"}",
+					"pm.test(\"二级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-7 一级菜单：聊天系统",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"聊天系统\",\n    \"path\": \"/chat\",\n    \"component\": \"Layout\",\n    \"parentId\": null,\n    \"menuType\": \"M\",\n    \"icon\": \"chat\",\n    \"sort\": 3,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA7 = res.data._id;",
+					"if (menuIdA7) {",
+					"    pm.environment.set(\"menuIdA7\", menuIdA7);",
+					"}",
+					"pm.test(\"一级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-8 二级菜单：消息管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"消息管理\",\n    \"path\": \"/chat/message\",\n    \"component\": \"Message\",\n    \"parentId\": \"{{menuIdA7}}\",\n    \"menuType\": \"M\",\n    \"icon\": \"message\",\n    \"sort\": 1,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA8 = res.data._id;",
+					"if (menuIdA8) {",
+					"    pm.environment.set(\"menuIdA8\", menuIdA8);",
+					"}",
+					"pm.test(\"二级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-9 一级菜单：生产管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"生产管理\",\n    \"path\": \"/production\",\n    \"component\": \"Layout\",\n    \"parentId\": null,\n    \"menuType\": \"M\",\n    \"icon\": \"production\",\n    \"sort\": 4,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA9 = res.data._id;",
+					"if (menuIdA9) {",
+					"    pm.environment.set(\"menuIdA9\", menuIdA9);",
+					"}",
+					"pm.test(\"一级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "02-10 二级菜单：工单管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdA}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"工单管理\",\n    \"path\": \"/production/workorder\",\n    \"component\": \"WorkOrder\",\n    \"parentId\": \"{{menuIdA9}}\",\n    \"menuType\": \"M\",\n    \"icon\": \"workorder\",\n    \"sort\": 1,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdA10 = res.data._id;",
+					"if (menuIdA10) {",
+					"    pm.environment.set(\"menuIdA10\", menuIdA10);",
+					"}",
+					"pm.test(\"二级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  }
+		]
+	  },
+	  {
+		"name": "03-菜单-为B公司创建完整菜单树",
+		"item": [
+		  {
+			"name": "03-1 一级菜单：零售管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdB}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"零售管理\",\n    \"path\": \"/retail\",\n    \"component\": \"Layout\",\n    \"parentId\": null,\n    \"menuType\": \"M\",\n    \"icon\": \"retail\",\n    \"sort\": 1,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdB1 = res.data._id;",
+					"if (menuIdB1) {",
+					"    pm.environment.set(\"menuIdB1\", menuIdB1);",
+					"}",
+					"pm.test(\"一级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "03-2 二级菜单：订单管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdB}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"订单管理\",\n    \"path\": \"/retail/order\",\n    \"component\": \"Order\",\n    \"parentId\": \"{{menuIdB1}}\",\n    \"menuType\": \"M\",\n    \"icon\": \"order\",\n    \"sort\": 1,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdB2 = res.data._id;",
+					"if (menuIdB2) {",
+					"    pm.environment.set(\"menuIdB2\", menuIdB2);",
+					"}",
+					"pm.test(\"二级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "03-3 一级菜单：聊天系统",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdB}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"聊天系统\",\n    \"path\": \"/chat\",\n    \"component\": \"Layout\",\n    \"parentId\": null,\n    \"menuType\": \"M\",\n    \"icon\": \"chat\",\n    \"sort\": 2,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdB3 = res.data._id;",
+					"if (menuIdB3) {",
+					"    pm.environment.set(\"menuIdB3\", menuIdB3);",
+					"}",
+					"pm.test(\"一级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "03-4 二级菜单：消息管理",
+			"request": {
+			  "method": "POST",
+			  "header": [
+				{
+				  "key": "Authorization",
+				  "value": "Bearer {{token}}"
+				},
+				{
+				  "key": "Organization-Id",
+				  "value": "{{orgIdB}}"
+				}
+			  ],
+			  "body": {
+				"mode": "raw",
+				"raw": "{\n    \"menuName\": \"消息管理\",\n    \"path\": \"/chat/message\",\n    \"component\": \"Message\",\n    \"parentId\": \"{{menuIdB3}}\",\n    \"menuType\": \"M\",\n    \"icon\": \"message\",\n    \"sort\": 1,\n    \"status\": true\n}",
+				"options": {
+				  "raw": {
+					"language": "json"
+				  }
+				}
+			  },
+			  "url": {
+				"raw": "{{baseUrl}}/menu/add",
+				"host": ["{{baseUrl}}"],
+				"path": ["menu", "add"]
+			  }
+			},
+			"event": [
+			  {
+				"listen": "test",
+				"script": {
+				  "exec": [
+					"const res = pm.response.json();",
+					"const menuIdB4 = res.data._id;",
+					"if (menuIdB4) {",
+					"    pm.environment.set(\"menuIdB4\", menuIdB4);",
+					"}",
+					"pm.test(\"二级菜单创建成功\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				  ],
+				  "type": "text/javascript"
+				}
+			  }
+			]
+		  }
+		]
+	  },
+	  {
+		"name": "04-角色-为A公司创建管理员角色",
+		"request": {
+		  "method": "POST",
+		  "header": [
+			{
+			  "key": "Authorization",
+			  "value": "Bearer {{token}}"
+			},
+			{
+			  "key": "Organization-Id",
+			  "value": "{{orgIdA}}"
+			}
+		  ],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n    \"roleName\": \"A公司管理员\",\n    \"roleCode\": \"ADMIN_A\",\n    \"menuIds\": [\"{{menuIdA1}}\", \"{{menuIdA2}}\", \"{{menuIdA3}}\", \"{{menuIdA4}}\", \"{{menuIdA5}}\", \"{{menuIdA6}}\", \"{{menuIdA7}}\", \"{{menuIdA8}}\", \"{{menuIdA9}}\", \"{{menuIdA10}}\"],\n    \"status\": true,\n    \"remark\": \"A公司超级管理员\"\n}",
+			"options": {
+			  "raw": {
+				"language": "json"
+			  }
+			}
+		  },
+		  "url": {
+			"raw": "{{baseUrl}}/role/add",
+			"host": ["{{baseUrl}}"],
+			"path": ["role", "add"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"const roleIdA = res.data._id;",
+				"if (roleIdA) {",
+				"    pm.environment.set(\"roleIdA\", roleIdA);",
+				"}",
+				"pm.test(\"A公司管理员角色创建成功\", function () {",
+				"    pm.response.to.have.status(200);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  },
+	  {
+		"name": "05-角色-为B公司创建管理员角色",
+		"request": {
+		  "method": "POST",
+		  "header": [
+			{
+			  "key": "Authorization",
+			  "value": "Bearer {{token}}"
+			},
+			{
+			  "key": "Organization-Id",
+			  "value": "{{orgIdB}}"
+			}
+		  ],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n    \"roleName\": \"B公司管理员\",\n    \"roleCode\": \"ADMIN_B\",\n    \"menuIds\": [\"{{menuIdB1}}\", \"{{menuIdB2}}\", \"{{menuIdB3}}\", \"{{menuIdB4}}\"],\n    \"status\": true,\n    \"remark\": \"B公司超级管理员\"\n}",
+			"options": {
+			  "raw": {
+				"language": "json"
+			  }
+			}
+		  },
+		  "url": {
+			"raw": "{{baseUrl}}/role/add",
+			"host": ["{{baseUrl}}"],
+			"path": ["role", "add"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"const roleIdB = res.data._id;",
+				"if (roleIdB) {",
+				"    pm.environment.set(\"roleIdB\", roleIdB);",
+				"}",
+				"pm.test(\"B公司管理员角色创建成功\", function () {",
+				"    pm.response.to.have.status(200);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  },
+	  {
+		"name": "06-用户-为A公司创建管理员",
+		"request": {
+		  "method": "POST",
+		  "header": [
+			{
+			  "key": "Authorization",
+			  "value": "Bearer {{token}}"
+			}
+		  ],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n    \"fullName\": \"A公司管理员\",\n    \"email\": \"admin_a@example.com\",\n    \"password\": \"123456\",\n    \"organizationId\": \"{{orgIdA}}\",\n    \"roleIds\": [\"{{roleIdA}}\"]\n}",
+			"options": {
+			  "raw": {
+				"language": "json"
+			  }
+			}
+		  },
+		  "url": {
+			"raw": "{{baseUrl}}/auth/signup",
+			"host": ["{{baseUrl}}"],
+			"path": ["auth", "signup"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"const userIdA = res._id;",
+				"if (userIdA) {",
+				"    pm.environment.set(\"userIdA\", userIdA);",
+				"}",
+				"pm.test(\"A公司管理员创建成功\", function () {",
+				"    pm.response.to.have.status(201);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  },
+	  {
+		"name": "07-用户-为B公司创建管理员",
+		"request": {
+		  "method": "POST",
+		  "header": [
+			{
+			  "key": "Authorization",
+			  "value": "Bearer {{token}}"
+			}
+		  ],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n    \"fullName\": \"B公司管理员\",\n    \"email\": \"admin_b@example.com\",\n    \"password\": \"123456\",\n    \"organizationId\": \"{{orgIdB}}\",\n    \"roleIds\": [\"{{roleIdB}}\"]\n}",
+			"options": {
+			  "raw": {
+				"language": "json"
+			  }
+			}
+		  },
+		  "url": {
+			"raw": "{{baseUrl}}/auth/signup",
+			"host": ["{{baseUrl}}"],
+			"path": ["auth", "signup"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"const userIdB = res._id;",
+				"if (userIdB) {",
+				"    pm.environment.set(\"userIdB\", userIdB);",
+				"}",
+				"pm.test(\"B公司管理员创建成功\", function () {",
+				"    pm.response.to.have.status(201);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  },
+	  {
+		"name": "08-验证-查询A公司菜单树",
+		"request": {
+		  "method": "GET",
+		  "header": [
+			{
+			  "key": "Authorization",
+			  "value": "Bearer {{token}}"
+			},
+			{
+			  "key": "Organization-Id",
+			  "value": "{{orgIdA}}"
+			}
+		  ],
+		  "url": {
+			"raw": "{{baseUrl}}/menu/tree",
+			"host": ["{{baseUrl}}"],
+			"path": ["menu", "tree"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"pm.test(\"A公司菜单树查询成功\", function () {",
+				"    pm.response.to.have.status(200);",
+				"    pm.expect(res.data.length).to.be.above(0);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  },
+	  {
+		"name": "09-验证-查询B公司菜单树",
+		"request": {
+		  "method": "GET",
+		  "header": [
+			{
+			  "key": "Authorization",
+			  "value": "Bearer {{token}}"
+			},
+			{
+			  "key": "Organization-Id",
+			  "value": "{{orgIdB}}"
+			}
+		  ],
+		  "url": {
+			"raw": "{{baseUrl}}/menu/tree",
+			"host": ["{{baseUrl}}"],
+			"path": ["menu", "tree"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"pm.test(\"B公司菜单树查询成功\", function () {",
+				"    pm.response.to.have.status(200);",
+				"    pm.expect(res.data.length).to.be.above(0);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  },
+	  {
+		"name": "10-验证-查询A公司角色列表",
+		"request": {
+		  "method": "GET",
+		  "header": [
+			{
+			  "key": "Authorization",
+			  "value": "Bearer {{token}}"
+			},
+			{
+			  "key": "Organization-Id",
+			  "value": "{{orgIdA}}"
+			}
+		  ],
+		  "url": {
+			"raw": "{{baseUrl}}/role/list",
+			"host": ["{{baseUrl}}"],
+			"path": ["role", "list"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"pm.test(\"A公司角色列表查询成功\", function () {",
+				"    pm.response.to.have.status(200);",
+				"    pm.expect(res.data.length).to.be.above(0);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  },
+	  {
+		"name": "11-验证-查询B公司角色列表",
+		"request": {
+		  "method": "GET",
+		  "header": [
+			{
+			  "key": "Authorization",
+			  "value": "Bearer {{token}}"
+			},
+			{
+			  "key": "Organization-Id",
+			  "value": "{{orgIdB}}"
+			}
+		  ],
+		  "url": {
+			"raw": "{{baseUrl}}/role/list",
+			"host": ["{{baseUrl}}"],
+			"path": ["role", "list"]
+		  }
+		},
+		"event": [
+		  {
+			"listen": "test",
+			"script": {
+			  "exec": [
+				"const res = pm.response.json();",
+				"pm.test(\"B公司角色列表查询成功\", function () {",
+				"    pm.response.to.have.status(200);",
+				"    pm.expect(res.data.length).to.be.above(0);",
+				"});"
+			  ],
+			  "type": "text/javascript"
+			}
+		  }
+		]
+	  }
+	]
+  }

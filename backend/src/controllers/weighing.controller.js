@@ -1,5 +1,5 @@
 // backend/controllers/weighing.controller.js
-import WeighingRecord from "../models/WeighingRecord.js";
+import WeighingRecord from "../models/weighing.record.model.js";
 import { v4 as uuidv4 } from "uuid";
 
 // 生成流水号（按日期+序号）
