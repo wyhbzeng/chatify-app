@@ -1,6 +1,6 @@
-import Organization from "../models/organization.model.js";
-import Role from "../models/role.model.js";
-import User from "../models/user.model.js";
+import Organization from "../models/Organization.js";
+import Role from "../models/Role.js";
+import User from "../models/User.js";
 import mongoose from "mongoose";
 
 export const createOrganization = async (req, res) => {
@@ -32,7 +32,7 @@ export const createOrganization = async (req, res) => {
 
     const savedOrg = await org.save({ session });
 
-    // 自动创建组织管理员
+    // 自动创建组织管理员角色
     const adminRole = new Role({
       roleName: "组织管理员",
       roleCode: `ORG_ADMIN_${savedOrg._id}`,
@@ -41,14 +41,14 @@ export const createOrganization = async (req, res) => {
       status: true,
       createdBy: req.user?._id,
     });
-
     await adminRole.save({ session });
 
-    // 给当前用户绑定角色与组织
+    // 将用户加入组织，并设为当前组织
     await User.findByIdAndUpdate(
       req.user._id,
       {
-        organizationId: savedOrg._id,
+        $addToSet: { organizationIds: savedOrg._id },
+        currentOrgId: savedOrg._id,
         $addToSet: { roleIds: adminRole._id }
       },
       { session }

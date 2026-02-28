@@ -1,10 +1,28 @@
-import Menu from "../models/menu.model.js";
+import Menu from "../models/Menu.js";
 import mongoose from "mongoose";
 
 const createMenu = async (req, res) => {
   try {
     const { organizationId } = req;
-    const menu = new Menu({ ...req.body, organizationId });
+    let { parentId, ...otherData } = req.body;
+
+    // 核心修复：如果 parentId 是空字符串，强制转为 null
+    // 同时如果传了字符串类型的ID，确保转为 ObjectId 类型
+    if (parentId === "") {
+      parentId = null;
+    } else if (parentId && !mongoose.Types.ObjectId.isValid(parentId)) {
+      // 如果传了 parentId 但格式不对，直接返回错误
+      return res.status(400).json({ code: 400, msg: "parentId 格式无效" });
+    }
+
+    // 组装最终数据
+    const menuData = {
+      ...otherData,
+      organizationId,
+      parentId // 这里已经是 null 或有效的 ObjectId
+    };
+
+    const menu = new Menu(menuData);
     await menu.save();
     res.status(200).json({ code: 200, msg: "添加成功", data: menu });
   } catch (error) {
@@ -35,13 +53,25 @@ const updateMenu = async (req, res) => {
   try {
     const { id } = req.params;
     const { organizationId } = req;
+    let { parentId, ...otherData } = req.body;
+
+    // 核心修复：更新时同样处理空字符串
+    if (parentId === "") {
+      parentId = null;
+    } else if (parentId && !mongoose.Types.ObjectId.isValid(parentId)) {
+      return res.status(400).json({ code: 400, msg: "parentId 格式无效" });
+    }
+
+    const updateData = { ...otherData, parentId };
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ code: 400, msg: "无效ID" });
     }
+    
     const menu = await Menu.findOneAndUpdate(
       { _id: id, organizationId },
-      req.body,
-      { new: true }
+      updateData,
+      { new: true, runValidators: true } // runValidators: true 确保更新时也触发 Schema 校验
     );
     if (!menu) {
       return res.status(404).json({ code: 404, msg: "菜单不存在" });

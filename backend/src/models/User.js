@@ -19,12 +19,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  organizationId: {
+
+  // 多组织支持
+  organizationIds: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Organization",
-    // required: true, // 改为非必填，允许用户先存在再加入组织
+    default: []
+  }],
+  currentOrgId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Organization",
     default: null
   },
+
   roleIds: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Role",

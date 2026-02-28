@@ -1,5 +1,5 @@
-import Message from "../models/message.model.js";
-import User from "../models/user.model.js";
+import Message from "../models/Message.js";
+import User from "../models/User.js";
 import minioClient from "../lib/minioClient.js";
 import { ENV } from "../lib/env.js";
 import { v4 as uuidv4 } from "uuid";

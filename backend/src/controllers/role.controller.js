@@ -1,5 +1,5 @@
-import Role from "../models/role.model.js";
-import User from "../models/user.model.js";
+import Role from "../models/Role.js";
+import User from "../models/User.js";
 import mongoose from "mongoose";
 
 // 创建角色

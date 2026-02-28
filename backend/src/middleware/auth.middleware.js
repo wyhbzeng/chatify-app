@@ -1,11 +1,12 @@
 import jwt from "jsonwebtoken";
-import User from "../models/user.model.js";
+import User from "../models/User.js";
 import { ENV } from "../lib/env.js";
 
 export const protectRoute = async (req, res, next) => {
   try {
     let token = null;
 
+    // 1. 从多个位置获取 Token
     if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
       token = req.headers.authorization.split(" ")[1];
     } else if (req.cookies.jwt) {
@@ -20,6 +21,7 @@ export const protectRoute = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized - No Token Provided" });
     }
 
+    // 2. 验证 Token
     let decoded;
     try {
       decoded = jwt.verify(token, ENV.JWT_SECRET);
@@ -34,28 +36,27 @@ export const protectRoute = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized - Invalid Token" });
     }
 
+    // 3. 查找用户
     const user = await User.findById(decoded.id).select("-password");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    req.user = user;
 
-    // ====================== 我帮你改好的代码 ======================
-    // 创建组织接口：不检查 organizationId，直接放行
-    // 用 req.originalUrl.includes 来判断，不受路由前缀影响
+    // ====================== 【核心修复】精准放行创建组织接口 ======================
+    // 如果是 POST /organization/add，直接跳过组织校验，放行！
     if (req.method === "POST" && req.originalUrl.includes("/organization/add")) {
-      req.user = user;
       return next();
     }
-    // ==================================================================
+    // ==========================================================================
 
-    // 你原来的逻辑，完全不动！聊天、登录、其他接口全部正常
-    const organizationId = req.headers['organization-id'] || user.organizationId;
-    if (!organizationId) {
-      return res.status(400).json({ message: "Missing organizationId" });
+    // 4. 其他所有接口，必须校验当前组织
+    const currentOrgId = req.headers['organization-id'] || user.currentOrgId;
+    if (!currentOrgId) {
+      return res.status(400).json({ message: "请先选择组织 / Missing currentOrgId" });
     }
+    req.organizationId = currentOrgId;
 
-    req.organizationId = organizationId;
-    req.user = user;
     next();
   } catch (error) {
     console.log("Error in protectRoute middleware:", error);
